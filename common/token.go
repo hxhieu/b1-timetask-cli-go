@@ -7,6 +7,8 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/hxhieu/b1-timetask-cli-go/console"
 )
 
 var TOKEN_SAVED_FILE = ".timetask-token"
@@ -45,7 +47,7 @@ func SaveUserToken(token string) error {
 		return err
 	}
 
-	fmt.Printf("User token saved to '%s'\n", saveTokenPath)
+	console.Success(fmt.Sprintf("User token saved to '%s'", saveTokenPath))
 
 	return nil
 }

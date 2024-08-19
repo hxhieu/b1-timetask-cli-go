@@ -1,9 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/hxhieu/b1-timetask-cli-go/common"
+	"github.com/hxhieu/b1-timetask-cli-go/console"
 )
 
 type runCmd struct {
@@ -16,7 +15,7 @@ func (c *runCmd) Run() error {
 		return err
 	}
 
-	fmt.Println(token)
+	console.Header(token)
 
 	return nil
 }
