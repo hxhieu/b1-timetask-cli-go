@@ -47,7 +47,7 @@ func SaveUserToken(token string) error {
 		return err
 	}
 
-	console.Success(fmt.Sprintf("User token saved to '%s'", saveTokenPath))
+	console.SuccessLn(fmt.Sprintf("User token saved to '%s'", saveTokenPath))
 
 	return nil
 }

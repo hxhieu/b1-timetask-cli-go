@@ -25,8 +25,15 @@ func (c *runCmd) Run() error {
 	if err != nil {
 		return err
 	}
-
 	console.Header(fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
+
+	// Parse the task inputs
+	taskParser, err := common.NewTaskParser()
+	if err != nil {
+		return err
+	}
+
+	taskParser.DebugPrint()
 
 	return nil
 }
