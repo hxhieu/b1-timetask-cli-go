@@ -6,22 +6,24 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 )
 
-var TOKEN_SAVED_FILE = ".b1-timetask-cli-token"
+var TOKEN_SAVED_FILE = ".timetask-token"
+var forgetLoginReminder = "Did you forget initialsing the CLI, with `login`?"
 
-func getSaveTokenPath() (*string, error) {
+func getSaveTokenPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	saveTokenPath := path.Join(homeDir, TOKEN_SAVED_FILE)
 	if len(saveTokenPath) == 0 {
-		return nil, errors.New("Cannot determine save token path, path is nil.")
+		return "", errors.New("cannot determine save token path, path is nil")
 	}
 
-	return &saveTokenPath, nil
+	return saveTokenPath, nil
 }
 
 func SaveUserToken(token string) error {
@@ -31,12 +33,11 @@ func SaveUserToken(token string) error {
 		return err
 	}
 
-	f, err := os.Create(*saveTokenPath)
-	defer f.Close()
-
+	f, err := os.Create(saveTokenPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	defer f.Close()
 
 	_, err = f.WriteString(token)
 
@@ -49,22 +50,33 @@ func SaveUserToken(token string) error {
 	return nil
 }
 
-func GetUserToken() (*string, error) {
+func GetUserToken() (string, error) {
 	saveTokenPath, err := getSaveTokenPath()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	f, err := os.Open(*saveTokenPath)
+	f, err := os.Open(saveTokenPath)
+	if err != nil {
+		errMsg := err.Error()
+		if _, ok := err.(*os.PathError); ok {
+			errMsg = "cannot open token file"
+
+		}
+		return "", fmt.Errorf("%s. %s", errMsg, forgetLoginReminder)
+	}
 	defer f.Close()
 
 	r := bufio.NewReader(f)
 	line, _, err := r.ReadLine()
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	token := string(line)
-	return &token, nil
+	if len(strings.Trim(token, " ")) == 0 {
+		return "", fmt.Errorf("token is invalid. %s", forgetLoginReminder)
+	}
+	return token, nil
 }

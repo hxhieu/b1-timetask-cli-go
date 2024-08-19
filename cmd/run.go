@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -17,11 +16,7 @@ func (c *runCmd) Run() error {
 		return err
 	}
 
-	if token == nil || len(*token) == 0 {
-		return errors.New("Could not get the user token. Did we forget to initialise the CLI?")
-	}
-
-	fmt.Println(*token)
+	fmt.Println(token)
 
 	return nil
 }
