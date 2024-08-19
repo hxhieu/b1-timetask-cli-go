@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/console"
+	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
 )
 
 type runCmd struct {
@@ -10,12 +13,20 @@ type runCmd struct {
 
 func (c *runCmd) Run() error {
 	token, err := common.GetUserToken()
-
 	if err != nil {
 		return err
 	}
 
-	console.Header(token)
+	client := intervals_api.New(token)
+
+	// Fetch the user
+	console.Info("Fetching user...")
+	me, err := client.Me()
+	if err != nil {
+		return err
+	}
+
+	console.Header(fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
 
 	return nil
 }
