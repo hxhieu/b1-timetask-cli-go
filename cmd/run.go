@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -19,7 +20,7 @@ func newJobTrack(pw progress.Writer, title string, taskCount int) *progress.Trac
 		Message: title,
 		Total:   int64(taskCount),
 		Units: progress.Units{
-			Notation:         " tasks",
+			Notation:         " jobs",
 			NotationPosition: progress.UnitsNotationPositionAfter,
 		},
 		DeferStart: true,
@@ -48,7 +49,7 @@ func setJobSuccess(job *progress.Tracker, message string) {
 	job.Increment(1)
 }
 
-func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser) {
+func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 	// Shared vars between steps
 	var client *intervals_api.Client
 	var taskParser *common.TaskCsvParser
@@ -80,20 +81,29 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser) {
 
 	// Parse and fetch tasks from CSV
 	if !job.IsErrored() {
-		job = newJobTrack(pw, "Check task inputs", 2)
+		job = newJobTrack(pw, "Check task inputs", 3)
+
+		// Concat IDs, to pass to the remoter server
+		var tasks string
+		var projects string
 
 		if parser, err := common.NewTaskParser(); err == nil {
 			job.Increment(1)
-			var ids string
 			for _, t := range parser.Tasks {
 				if t != nil {
-					ids += t.Task + ","
+					tasks += t.Task + ","
 				}
 			}
-			ids = strings.TrimSuffix(ids, ",")
-			if remoteTasks, err := client.FetchTasks(ids); err == nil {
+			tasks = strings.TrimSuffix(tasks, ",")
+
+			// Fetch needed details from remote
+
+			if remoteTasks, err := client.FetchTasks(tasks); err == nil {
+				job.Increment(1)
 				// TODO: Optimise this? nested loops here
 				for _, remoteTask := range *remoteTasks {
+					// Also build the project IDs list
+					projects += remoteTask.ProjectId + ","
 					for _, localTask := range parser.Tasks {
 						if localTask != nil && localTask.Task == remoteTask.LocalId {
 							localTask.ProjectId = remoteTask.ProjectId
@@ -102,8 +112,39 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser) {
 						}
 					}
 				}
+				projects = strings.TrimSuffix(projects, ",")
+
+				// Fetch work types, because they are setup per project
+				if remoteWorkTypes, err := client.FetchProjectWorkTypes(projects); err == nil {
+					job.Increment(1)
+					// TODO: Optimise this? nested loops here
+					for _, localTask := range parser.Tasks {
+						var defaultWorkType *string
+						// Walk all work types of the same project
+						for _, remoteWorkType := range *remoteWorkTypes {
+							if localTask != nil && localTask.ProjectId == remoteWorkType.ProjectId {
+								localTask.WorkTypeId = remoteWorkType.WorkTypeId
+								defaultWorkType = &remoteWorkType.WorkType
+								// Finally found the match by work type name
+								if localTask.WorkType == remoteWorkType.WorkType {
+									defaultWorkType = nil
+									break
+								}
+							}
+						}
+						// Input work type not found, using the last one we found from remote server
+						if defaultWorkType != nil {
+							localTask.WorkType = *defaultWorkType
+						}
+					}
+				} else {
+					setJobError(job, err)
+				}
+
+				// All done
 				setJobSuccess(job, "Found below task(s)")
 				taskParser = parser
+
 			} else {
 				setJobError(job, err)
 			}
@@ -119,20 +160,32 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser) {
 		}
 	}
 
-	taskParser.DebugPrint()
+	if job.IsErrored() {
+		return nil, nil, errors.New("one or more steps throwing errors")
+	}
 
+	taskParser.DebugPrint()
 	console.Header("Press ENTER to process, or CTRL+C to terminate.")
 	fmt.Scanln()
 
-	return client, taskParser
+	return client, taskParser, nil
+}
+
+func runExecSteps(client *intervals_api.Client, tasks []*common.TimeTaskInput) error {
+	return nil
 }
 
 func (c *runCmd) Run() error {
-	client, taskParser := runPrepSteps()
+	// Prep checks
+	client, taskParser, err := runPrepSteps()
+	if err != nil {
+		return err
+	}
 
-	// If we cannot get the variables from the prep steps then they have failed
-	if client == nil || taskParser == nil {
-		return nil
+	// Real work
+	err = runExecSteps(client, taskParser.Tasks)
+	if err != nil {
+		return err
 	}
 
 	return nil

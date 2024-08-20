@@ -33,6 +33,15 @@ func InfoLn(msg string) {
 	Info(fmt.Sprintf("%s\n", msg))
 }
 
+func Warn(msg string) {
+	c := color.New(color.FgHiYellow)
+	c.Print(msg)
+}
+
+func WarnLn(msg string) {
+	Warn(fmt.Sprintf("%s\n", msg))
+}
+
 func Header(header string) {
 	c := color.New(color.FgWhite).Add(color.Bold)
 	c.Printf(" %s \n", header)

@@ -16,7 +16,6 @@ type TasksReponse struct {
 }
 
 func (c *Client) FetchTasks(tasks string) (*[]Task, error) {
-
 	body, err := c.get("task?localid=" + tasks)
 	if err != nil {
 		return nil, err
