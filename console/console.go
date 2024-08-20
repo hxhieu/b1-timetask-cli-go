@@ -34,6 +34,6 @@ func InfoLn(msg string) {
 }
 
 func Header(header string) {
-	c := color.New(color.FgBlack).Add(color.BgWhite).Add(color.Bold)
+	c := color.New(color.FgWhite).Add(color.Bold)
 	c.Printf(" %s \n", header)
 }

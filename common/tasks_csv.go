@@ -8,7 +8,7 @@ import (
 )
 
 type TimeTaskInput struct {
-	Id       string  `csv:"task"`
+	Task     string  `csv:"task"`
 	Desc     string  `csv:"desc"`
 	Billable string  `csv:"billable"`
 	Mon      float32 `csv:"mon"`
@@ -21,7 +21,9 @@ type TimeTaskInput struct {
 
 	// From remote source
 
-	TaskDesc string
+	Id        string
+	Title     string
+	ProjectId string
 }
 
 type TaskCsvParser struct {
@@ -54,26 +56,14 @@ func NewTaskParser() (*TaskCsvParser, error) {
 func (p *TaskCsvParser) DebugPrint() {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"Task ID", "Desc", "Billable", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"})
+	t.AppendHeader(table.Row{"Task", "ID", "Desc", "Title", "Project ID", "Billable", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"})
 	for _, task := range p.Tasks {
 		if task == nil {
 			t.AppendRow([]interface{}{"-"})
 		} else {
-			t.AppendRow([]interface{}{task.Id, task.Desc, task.Billable, task.Mon, task.Tue, task.Wed, task.Thu, task.Fri, task.Sat, task.Sun})
-			// console.InfoLn(fmt.Sprintf(
-			// 	"Task id: %s, Desc: %s, Billable: %s, Mon: %f, Tue: %f, Wed: %f, Thu: %f, Fri: %f, Sat: %f, Sun: %f",
-			// 	task.Id,
-			// 	task.Desc,
-			// 	task.Billable,
-			// 	task.Mon,
-			// 	task.Tue,
-			// 	task.Wed,
-			// 	task.Thu,
-			// 	task.Fri,
-			// 	task.Sat,
-			// 	task.Sun,
-			// ))
+			t.AppendRow([]interface{}{task.Task, task.Id, task.Desc, task.Title, task.ProjectId, task.Billable, task.Mon, task.Tue, task.Wed, task.Thu, task.Fri, task.Sat, task.Sun})
 		}
+		t.AppendSeparator()
 	}
 	t.Render()
 }
