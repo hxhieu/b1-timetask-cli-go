@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -83,7 +84,24 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser) {
 
 		if parser, err := common.NewTaskParser(); err == nil {
 			job.Increment(1)
-			if err = client.FetchTasks(parser.Tasks); err == nil {
+			var ids string
+			for _, t := range parser.Tasks {
+				if t != nil {
+					ids += t.Task + ","
+				}
+			}
+			ids = strings.TrimSuffix(ids, ",")
+			if remoteTasks, err := client.FetchTasks(ids); err == nil {
+				// TODO: Optimise this? nested loops here
+				for _, remoteTask := range *remoteTasks {
+					for _, localTask := range parser.Tasks {
+						if localTask != nil && localTask.Task == remoteTask.LocalId {
+							localTask.ProjectId = remoteTask.ProjectId
+							localTask.Id = remoteTask.Id
+							localTask.Title = remoteTask.Title
+						}
+					}
+				}
 				setJobSuccess(job, "Found below task(s)")
 				taskParser = parser
 			} else {

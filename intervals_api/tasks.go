@@ -2,9 +2,6 @@ package intervals_api
 
 import (
 	"encoding/json"
-	"strings"
-
-	"github.com/hxhieu/b1-timetask-cli-go/common"
 )
 
 type Task struct {
@@ -18,36 +15,18 @@ type TasksReponse struct {
 	Task []Task `json:"task"`
 }
 
-func (c *Client) FetchTasks(tasks []*common.TimeTaskInput) error {
-	var ids string
-	for _, t := range tasks {
-		if t != nil {
-			ids += t.Task + ","
-		}
-	}
-	ids = strings.TrimSuffix(ids, ",")
+func (c *Client) FetchTasks(tasks string) (*[]Task, error) {
 
-	body, err := c.get("task?localid=" + ids)
+	body, err := c.get("task?localid=" + tasks)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	res := TasksReponse{}
 	err = json.Unmarshal(body, &res)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// TODO: Optimise this? nested loops here
-	for _, remoteTask := range res.Task {
-		for _, localTask := range tasks {
-			if localTask != nil && localTask.Task == remoteTask.LocalId {
-				localTask.ProjectId = remoteTask.ProjectId
-				localTask.Id = remoteTask.Id
-				localTask.Title = remoteTask.Title
-			}
-		}
-	}
-
-	return nil
+	return &res.Task, nil
 }
