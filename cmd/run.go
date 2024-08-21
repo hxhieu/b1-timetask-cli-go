@@ -21,15 +21,14 @@ type runPrepResult struct {
 	tasks  []*common.TimeTaskInput
 }
 
-func newJobTrack(pw progress.Writer, title string, taskCount int) *progress.Tracker {
+func newJobTrack(pw progress.Writer, title string) *progress.Tracker {
 	job := progress.Tracker{
 		Message: title,
-		Total:   int64(taskCount),
 		Units: progress.Units{
 			Notation:         " jobs",
 			NotationPosition: progress.UnitsNotationPositionAfter,
 		},
-		DeferStart: true,
+		DeferStart: false,
 	}
 	pw.AppendTracker(&job)
 	return &job
@@ -42,6 +41,16 @@ func setDefaultProgress(pw *progress.Writer) {
 	p := (*pw)
 	p.SetTrackerPosition(progress.PositionRight)
 	p.SetAutoStop(true)
+	// p.SetUpdateFrequency(time.Millisecond * 10)
+	// p.Style().Visibility.ETA = false
+	// p.Style().Visibility.ETAOverall = false
+	// p.Style().Visibility.Percentage = false
+	// p.Style().Visibility.Speed = true
+	// p.Style().Visibility.SpeedOverall = false
+	// p.Style().Visibility.Time = true
+	// p.Style().Visibility.TrackerOverall = true
+	// p.Style().Visibility.Value = true
+	// p.Style().Visibility.Pinned = false
 }
 
 // Also mark tracker as error
@@ -50,10 +59,9 @@ func setJobError(job *progress.Tracker, err error) {
 	job.MarkAsErrored()
 }
 
-// Also increase the tracker count
 func setJobSuccess(job *progress.Tracker, message string) {
 	job.UpdateMessage(fmt.Sprintf("%s -> %s", job.Message, color.HiGreenString(message)))
-	job.Increment(1)
+	job.MarkAsDone()
 }
 
 func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
@@ -69,10 +77,9 @@ func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 	go pw.Render()
 
 	// Check and fetch user job
-	job := newJobTrack(pw, "Check user", 2)
+	job := newJobTrack(pw, "Check user")
 
 	if token, err := common.GetUserToken(); err == nil {
-		job.Increment(1)
 
 		// API client
 		client = intervals_api.New(token, debug)
@@ -90,14 +97,13 @@ func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 
 	// Parse and fetch tasks from CSV
 	if !job.IsErrored() {
-		job = newJobTrack(pw, "Check task inputs", 3)
+		job = newJobTrack(pw, "Check task inputs")
 
 		// Concat IDs, to pass to the remoter server
 		var tasks string
 		var projects string
 
 		if parser, err := common.NewTaskParser(); err == nil {
-			job.Increment(1)
 			for _, t := range parser.Tasks {
 				if t != nil {
 					tasks += t.Task + ","
@@ -108,7 +114,6 @@ func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 			// Fetch needed details from remote
 
 			if remoteTasks, err := client.FetchTasks(tasks); err == nil {
-				job.Increment(1)
 				// TODO: Optimise this? nested loops here
 				for _, remoteTask := range *remoteTasks {
 					// Also build the project IDs list
@@ -125,7 +130,6 @@ func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 
 				// Fetch work types, because they are setup per project
 				if remoteWorkTypes, err := client.FetchProjectWorkTypes(projects); err == nil {
-					job.Increment(1)
 					// TODO: Optimise this? nested loops here
 					for _, localTask := range parser.Tasks {
 						var defaultWorkType *string
@@ -163,6 +167,7 @@ func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 	}
 
 	// Render all jobs, until all done
+	time.Sleep(time.Millisecond * 100)
 	for pw.IsRenderInProgress() {
 	}
 
@@ -186,7 +191,6 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 	go pw.Render()
 
 	weekDays := common.GetWeekRange(time.Now())
-	var job *progress.Tracker
 
 	for i, d := range weekDays {
 		for _, input := range prepResult.tasks {
@@ -208,9 +212,7 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 			if createTime.Time > 0 {
 				// Run each as a goroutine
 				go func() {
-					job = newJobTrack(pw, fmt.Sprintf("Creating time task: %s | %s | %.2f hour(s) |", createTime.Date, createTime.Description, createTime.Time), 1)
-					job.Start()
-					// job.Start()
+					job := newJobTrack(pw, fmt.Sprintf("Creating time task: %s | %s | %.2f hour(s) |", createTime.Date, createTime.Description, createTime.Time))
 					if err := client.CreateTime(createTime); err == nil {
 						setJobSuccess(job, "Created")
 					} else {
@@ -222,8 +224,12 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 	}
 
 	// Render all jobs, until all done
+	time.Sleep(time.Millisecond * 100)
 	for pw.IsRenderInProgress() {
 	}
+
+	console.Header("All DONE! Press ENTER to exit.")
+	fmt.Scanln()
 
 	return nil
 }
