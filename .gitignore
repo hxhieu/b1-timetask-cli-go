@@ -1,4 +1,6 @@
 .bin
 .token
 .debug*
+.coverage/*
+!.coverage/.gitkeep
 tasks.csv
