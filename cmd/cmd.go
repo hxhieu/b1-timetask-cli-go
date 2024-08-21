@@ -1,5 +1,9 @@
 package cmd
 
+type CLIContext struct {
+	Debug bool
+}
+
 type CLI struct {
 	Debug bool `help:"Enable debug mode."`
 

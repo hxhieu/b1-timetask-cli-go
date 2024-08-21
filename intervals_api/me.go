@@ -3,6 +3,8 @@ package intervals_api
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/hxhieu/b1-timetask-cli-go/debug"
 )
 
 type Me struct {
@@ -17,13 +19,20 @@ type MeResponse struct {
 }
 
 func (c *Client) Me() (*Me, error) {
+	debugFile := ".debug_me.json"
+	if c.debug {
+		if debugData := debug.LoadDataFile[Me](debugFile); debugData != nil {
+			return debugData, nil
+		}
+	}
+
 	body, err := c.get("me")
 	if err != nil {
 		return nil, err
 	}
 
 	res := MeResponse{}
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(*body, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -32,5 +41,11 @@ func (c *Client) Me() (*Me, error) {
 		return nil, fmt.Errorf("cannot find the match user with the provided token")
 	}
 
-	return &res.Me[0], nil
+	result := res.Me[0]
+
+	if c.debug {
+		debug.WriteDataFile(debugFile, result)
+	}
+
+	return &result, nil
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -15,15 +16,19 @@ import (
 type runCmd struct {
 }
 
-func newJobTrack(pw progress.Writer, title string, taskCount int) *progress.Tracker {
+type runPrepResult struct {
+	userId string
+	tasks  []*common.TimeTaskInput
+}
+
+func newJobTrack(pw progress.Writer, title string) *progress.Tracker {
 	job := progress.Tracker{
 		Message: title,
-		Total:   int64(taskCount),
 		Units: progress.Units{
 			Notation:         " jobs",
 			NotationPosition: progress.UnitsNotationPositionAfter,
 		},
-		DeferStart: true,
+		DeferStart: false,
 	}
 	pw.AppendTracker(&job)
 	return &job
@@ -35,6 +40,17 @@ func setDefaultProgress(pw *progress.Writer) {
 	}
 	p := (*pw)
 	p.SetTrackerPosition(progress.PositionRight)
+	p.SetAutoStop(true)
+	// p.SetUpdateFrequency(time.Millisecond * 10)
+	// p.Style().Visibility.ETA = false
+	// p.Style().Visibility.ETAOverall = false
+	// p.Style().Visibility.Percentage = false
+	// p.Style().Visibility.Speed = true
+	// p.Style().Visibility.SpeedOverall = false
+	// p.Style().Visibility.Time = true
+	// p.Style().Visibility.TrackerOverall = true
+	// p.Style().Visibility.Value = true
+	// p.Style().Visibility.Pinned = false
 }
 
 // Also mark tracker as error
@@ -43,14 +59,14 @@ func setJobError(job *progress.Tracker, err error) {
 	job.MarkAsErrored()
 }
 
-// Also increase the tracker count
 func setJobSuccess(job *progress.Tracker, message string) {
 	job.UpdateMessage(fmt.Sprintf("%s -> %s", job.Message, color.HiGreenString(message)))
-	job.Increment(1)
+	job.MarkAsDone()
 }
 
-func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
+func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 	// Shared vars between steps
+	result := &runPrepResult{}
 	var client *intervals_api.Client
 	var taskParser *common.TaskCsvParser
 
@@ -61,16 +77,16 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 	go pw.Render()
 
 	// Check and fetch user job
-	job := newJobTrack(pw, "Check user", 2)
+	job := newJobTrack(pw, "Check user")
 
 	if token, err := common.GetUserToken(); err == nil {
-		job.Increment(1)
 
 		// API client
-		client = intervals_api.New(token)
+		client = intervals_api.New(token, debug)
 
 		// Fetch the user
 		if me, err := client.Me(); err == nil {
+			result.userId = me.Id
 			setJobSuccess(job, fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
 		} else {
 			setJobError(job, err)
@@ -81,14 +97,13 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 
 	// Parse and fetch tasks from CSV
 	if !job.IsErrored() {
-		job = newJobTrack(pw, "Check task inputs", 3)
+		job = newJobTrack(pw, "Check task inputs")
 
 		// Concat IDs, to pass to the remoter server
 		var tasks string
 		var projects string
 
 		if parser, err := common.NewTaskParser(); err == nil {
-			job.Increment(1)
 			for _, t := range parser.Tasks {
 				if t != nil {
 					tasks += t.Task + ","
@@ -99,7 +114,6 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 			// Fetch needed details from remote
 
 			if remoteTasks, err := client.FetchTasks(tasks); err == nil {
-				job.Increment(1)
 				// TODO: Optimise this? nested loops here
 				for _, remoteTask := range *remoteTasks {
 					// Also build the project IDs list
@@ -116,7 +130,6 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 
 				// Fetch work types, because they are setup per project
 				if remoteWorkTypes, err := client.FetchProjectWorkTypes(projects); err == nil {
-					job.Increment(1)
 					// TODO: Optimise this? nested loops here
 					for _, localTask := range parser.Tasks {
 						var defaultWorkType *string
@@ -154,10 +167,8 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 	}
 
 	// Render all jobs, until all done
+	time.Sleep(time.Millisecond * 100)
 	for pw.IsRenderInProgress() {
-		if pw.LengthActive() == 0 {
-			pw.Stop()
-		}
 	}
 
 	if job.IsErrored() {
@@ -165,25 +176,79 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 	}
 
 	taskParser.DebugPrint()
+	result.tasks = taskParser.Tasks
 	console.Header("Press ENTER to process, or CTRL+C to terminate.")
 	fmt.Scanln()
 
-	return client, taskParser, nil
+	return result, client, nil
 }
 
-func runExecSteps(client *intervals_api.Client, tasks []*common.TimeTaskInput) error {
+func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error {
+	// instantiate a Progress Writer and set up the options
+	pw := progress.NewWriter()
+	setDefaultProgress(&pw)
+
+	go pw.Render()
+
+	weekDays := common.GetWeekRange(time.Now())
+
+	for i, d := range weekDays {
+		for _, input := range prepResult.tasks {
+			if input == nil {
+				continue
+			}
+			inputHours := input.Hours()
+
+			// Create time task request
+			createTime := &intervals_api.CreateTimeRequest{
+				PersonId: prepResult.userId,
+				Date:     d.Format("2006-01-02"),
+				Time:     inputHours[i],
+			}
+			// Load from input
+			createTime.ParseInput(input)
+
+			// Only process valid time task, i.e. hours > 0
+			if createTime.Time > 0 {
+				// Run each as a goroutine
+				go func() {
+					job := newJobTrack(pw, fmt.Sprintf(
+						"Creating time task: %s | %s | %s | %.2f hour(s) |",
+						createTime.Date,
+						createTime.Description,
+						createTime.WorkType,
+						createTime.Time,
+					))
+					if err := client.CreateTime(createTime); err == nil {
+						setJobSuccess(job, "Created")
+					} else {
+						setJobError(job, err)
+					}
+				}()
+			}
+		}
+	}
+
+	// Render all jobs, until all done
+	time.Sleep(time.Millisecond * 100)
+	for pw.IsRenderInProgress() {
+	}
+
+	console.Header("All DONE! Press ENTER to exit.")
+	fmt.Scanln()
+
 	return nil
 }
 
-func (c *runCmd) Run() error {
+func (c *runCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	client, taskParser, err := runPrepSteps()
+	prepResult, client, err := runPrepSteps(ctx.Debug)
 	if err != nil {
 		return err
 	}
 
 	// Real work
-	err = runExecSteps(client, taskParser.Tasks)
+	err = runExecSteps(prepResult, client)
 	if err != nil {
 		return err
 	}
