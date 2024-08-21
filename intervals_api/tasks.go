@@ -31,7 +31,7 @@ func (c *Client) FetchTasks(tasks string) (*[]Task, error) {
 	}
 
 	res := TasksReponse{}
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(*body, &res)
 	if err != nil {
 		return nil, err
 	}

@@ -32,7 +32,7 @@ func (c *Client) Me() (*Me, error) {
 	}
 
 	res := MeResponse{}
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(*body, &res)
 	if err != nil {
 		return nil, err
 	}

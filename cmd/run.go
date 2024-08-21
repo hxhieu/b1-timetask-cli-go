@@ -212,7 +212,13 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 			if createTime.Time > 0 {
 				// Run each as a goroutine
 				go func() {
-					job := newJobTrack(pw, fmt.Sprintf("Creating time task: %s | %s | %.2f hour(s) |", createTime.Date, createTime.Description, createTime.Time))
+					job := newJobTrack(pw, fmt.Sprintf(
+						"Creating time task: %s | %s | %s | %.2f hour(s) |",
+						createTime.Date,
+						createTime.Description,
+						createTime.WorkType,
+						createTime.Time,
+					))
 					if err := client.CreateTime(createTime); err == nil {
 						setJobSuccess(job, "Created")
 					} else {

@@ -36,7 +36,7 @@ func (c *Client) FetchProjectWorkTypes(projects string, active ...string) (*[]Pr
 	}
 
 	res := ProjectWorkTypeResponse{}
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(*body, &res)
 	if err != nil {
 		return nil, err
 	}
