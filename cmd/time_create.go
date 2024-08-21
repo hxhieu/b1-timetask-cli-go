@@ -6,64 +6,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/console"
 	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-type runPrepResult struct {
+type createTimePrepResult struct {
 	userId string
 	tasks  []*common.TimeTaskInput
 }
 
-func newJobTrack(pw progress.Writer, title string) *progress.Tracker {
-	job := progress.Tracker{
-		Message: title,
-		Units: progress.Units{
-			Notation:         " jobs",
-			NotationPosition: progress.UnitsNotationPositionAfter,
-		},
-		DeferStart: false,
-	}
-	pw.AppendTracker(&job)
-	return &job
-}
-
-func setDefaultProgress(pw *progress.Writer) {
-	if pw == nil {
-		return
-	}
-	p := (*pw)
-	p.SetTrackerPosition(progress.PositionRight)
-	p.SetAutoStop(true)
-	// p.SetUpdateFrequency(time.Millisecond * 10)
-	// p.Style().Visibility.ETA = false
-	// p.Style().Visibility.ETAOverall = false
-	// p.Style().Visibility.Percentage = false
-	// p.Style().Visibility.Speed = true
-	// p.Style().Visibility.SpeedOverall = false
-	// p.Style().Visibility.Time = true
-	// p.Style().Visibility.TrackerOverall = true
-	// p.Style().Visibility.Value = true
-	// p.Style().Visibility.Pinned = false
-}
-
-// Also mark tracker as error
-func setJobError(job *progress.Tracker, err error) {
-	job.UpdateMessage(fmt.Sprintf("%s -> %s", job.Message, color.RedString(err.Error())))
-	job.MarkAsErrored()
-}
-
-func setJobSuccess(job *progress.Tracker, message string) {
-	job.UpdateMessage(fmt.Sprintf("%s -> %s", job.Message, color.HiGreenString(message)))
-	job.MarkAsDone()
-}
-
-func runPrepSteps(debug bool, inputFile *string) (*runPrepResult, *intervals_api.Client, error) {
+func createTimePrepSteps(debug bool, inputFile *string) (*createTimePrepResult, *intervals_api.Client, error) {
 	// Shared vars between steps
-	result := &runPrepResult{}
+	result := &createTimePrepResult{}
 	var client *intervals_api.Client
 	var taskParser *common.TaskCsvParser
 
@@ -180,7 +136,7 @@ func runPrepSteps(debug bool, inputFile *string) (*runPrepResult, *intervals_api
 	return result, client, nil
 }
 
-func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error {
+func createTimeExecSteps(prepResult *createTimePrepResult, client *intervals_api.Client) error {
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
 	setDefaultProgress(&pw)
@@ -195,34 +151,40 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 				continue
 			}
 			inputHours := input.Hours()
+			createTimeHours := inputHours[i]
+
+			// Only process valid time task, i.e. hours > 0
+			if createTimeHours <= 0 {
+				continue
+			}
 
 			// Create time task request
 			createTime := &intervals_api.TimeEntry{
 				PersonId: prepResult.userId,
 				Date:     common.DateToString(d),
-				Time:     inputHours[i],
+				// Need a string for remote payload
+				Time: fmt.Sprintf("%f", createTimeHours),
 			}
-			// Load from input
-			createTime.ParseInput(input)
 
-			// Only process valid time task, i.e. hours > 0
-			if createTime.Time > 0 {
-				// Run each as a goroutine
-				go func() {
-					job := newJobTrack(pw, fmt.Sprintf(
-						"Creating time task: %s | %s | %s | %.2f hour(s) |",
-						createTime.Date,
-						createTime.Description,
-						createTime.WorkType,
-						createTime.Time,
-					))
-					if err := client.CreateTime(createTime); err == nil {
-						setJobSuccess(job, "Created")
-					} else {
-						setJobError(job, err)
-					}
-				}()
-			}
+			createTime.LoadFromInput(input)
+			// Reset this to avoid creation error, where remote server is not expecting this
+			createTime.WorkTypeRemote = ""
+
+			// Run each as a goroutine
+			go func() {
+				job := newJobTrack(pw, fmt.Sprintf(
+					"Creating time task: %s | %s | %s | %.2f hour(s) |",
+					createTime.Date,
+					createTime.Description,
+					createTime.WorkType,
+					createTimeHours,
+				))
+				if err := client.CreateTime(createTime); err == nil {
+					setJobSuccess(job, "Created")
+				} else {
+					setJobError(job, err)
+				}
+			}()
 		}
 	}
 
@@ -239,13 +201,13 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 
 func (c *timeCreateCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	prepResult, client, err := runPrepSteps(ctx.Debug, c.InputFile)
+	prepResult, client, err := createTimePrepSteps(ctx.Debug, c.InputFile)
 	if err != nil {
 		return err
 	}
 
 	// Real work
-	err = runExecSteps(prepResult, client)
+	err = createTimeExecSteps(prepResult, client)
 	if err != nil {
 		return err
 	}

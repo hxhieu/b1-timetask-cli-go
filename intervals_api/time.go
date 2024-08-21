@@ -3,6 +3,7 @@ package intervals_api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -10,16 +11,20 @@ import (
 )
 
 type TimeEntry struct {
-	Billable    string  `json:"billable"`
-	Date        string  `json:"date"`
-	Time        float32 `json:"time"`
-	PersonId    string  `json:"personid"`
-	TaskId      string  `json:"taskid"`
-	ProjectId   string  `json:"projectid"`
-	WorkTypeId  string  `json:"worktypeid"`
-	Description string  `json:"description"`
+	Billable    string `json:"billable"`
+	Date        string `json:"date"`
+	Time        string `json:"time"`
+	PersonId    string `json:"personid"`
+	TaskId      string `json:"taskid"`
+	ProjectId   string `json:"projectid"`
+	WorkTypeId  string `json:"worktypeid"`
+	Description string `json:"description"`
 
-	// For display
+	// From the GETs
+	Id             string `json:"id,omitempty"`
+	WorkTypeRemote string `json:"worktype,omitempty"`
+
+	// For local display
 	WorkType string `json:"-"`
 }
 
@@ -46,7 +51,13 @@ func (c *Client) GetTimeEntries(start time.Time, end time.Time) (*[]TimeEntry, e
 		}
 	}
 
-	body, err := c.get("time?datebegin=" + common.DateToString(start) + "&dateend=" + common.DateToString(end))
+	// Default lmit is 10, so we need to override it with something bigger
+	limit := 100
+	body, err := c.get(fmt.Sprintf(
+		"time?datebegin=%s&dateend=%s&limit=%d",
+		common.DateToString(start),
+		common.DateToString(end), limit,
+	))
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +88,7 @@ func (c *Client) DeleteTimeEntry(id string) error {
 }
 
 // Map from CSV input
-func (t *TimeEntry) ParseInput(input *common.TimeTaskInput) error {
+func (t *TimeEntry) LoadFromInput(input *common.TimeTaskInput) error {
 	if input == nil {
 		return errors.New("the source input is nil")
 	}
