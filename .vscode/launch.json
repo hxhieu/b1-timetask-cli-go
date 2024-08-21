@@ -5,13 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug - Run",
+            "name": "Debug - `time create`",
             "type": "go",
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}",
             "args": [
-                "run"
+                "time",
+                "create",
+                "--debug"
             ]
         }
     ]

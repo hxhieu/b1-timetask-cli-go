@@ -32,14 +32,18 @@ type TaskCsvParser struct {
 	Tasks []*TimeTaskInput
 }
 
-// TODO: CLI params?
+// Default input file
 var TASK_CSV_FILE = "tasks.csv"
 
-func NewTaskParser() (*TaskCsvParser, error) {
+func NewTaskParser(inputFile *string) (*TaskCsvParser, error) {
+	f := TASK_CSV_FILE
+	if inputFile != nil {
+		f = *inputFile
+	}
 	parser := &TaskCsvParser{}
 
 	// Read the file
-	buffer, err := os.ReadFile(TASK_CSV_FILE)
+	buffer, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
