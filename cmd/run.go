@@ -16,6 +16,12 @@ import (
 type runCmd struct {
 }
 
+type runPrepResult struct {
+	userId     string
+	client     *intervals_api.Client
+	taskParser *common.TaskCsvParser
+}
+
 func newJobTrack(pw progress.Writer, title string, taskCount int) *progress.Tracker {
 	job := progress.Tracker{
 		Message: title,
@@ -50,11 +56,9 @@ func setJobSuccess(job *progress.Tracker, message string) {
 	job.Increment(1)
 }
 
-func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error) {
+func runPrepSteps() (*runPrepResult, error) {
 	// Shared vars between steps
-	var client *intervals_api.Client
-	var taskParser *common.TaskCsvParser
-	var userId string
+	result := &runPrepResult{}
 
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
@@ -69,11 +73,11 @@ func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error
 		job.Increment(1)
 
 		// API client
-		client = intervals_api.New(token)
+		result.client = intervals_api.New(token)
 
 		// Fetch the user
-		if me, err := client.Me(); err == nil {
-			userId = me.Id
+		if me, err := result.client.Me(); err == nil {
+			result.userId = me.Id
 			setJobSuccess(job, fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
 		} else {
 			setJobError(job, err)
@@ -101,7 +105,7 @@ func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error
 
 			// Fetch needed details from remote
 
-			if remoteTasks, err := client.FetchTasks(tasks); err == nil {
+			if remoteTasks, err := result.client.FetchTasks(tasks); err == nil {
 				job.Increment(1)
 				// TODO: Optimise this? nested loops here
 				for _, remoteTask := range *remoteTasks {
@@ -118,7 +122,7 @@ func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error
 				projects = strings.TrimSuffix(projects, ",")
 
 				// Fetch work types, because they are setup per project
-				if remoteWorkTypes, err := client.FetchProjectWorkTypes(projects); err == nil {
+				if remoteWorkTypes, err := result.client.FetchProjectWorkTypes(projects); err == nil {
 					job.Increment(1)
 					// TODO: Optimise this? nested loops here
 					for _, localTask := range parser.Tasks {
@@ -146,7 +150,7 @@ func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error
 
 				// All done
 				setJobSuccess(job, "Found below task(s)")
-				taskParser = parser
+				result.taskParser = parser
 
 			} else {
 				setJobError(job, err)
@@ -164,21 +168,21 @@ func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error
 	}
 
 	if job.IsErrored() {
-		return userId, nil, nil, errors.New("one or more steps throwing errors")
+		return nil, errors.New("one or more steps throwing errors")
 	}
 
-	taskParser.DebugPrint()
+	result.taskParser.DebugPrint()
 	console.Header("Press ENTER to process, or CTRL+C to terminate.")
 	fmt.Scanln()
 
-	return userId, client, taskParser, nil
+	return result, nil
 }
 
-func runExecSteps(userId string, client *intervals_api.Client, tasks []*common.TimeTaskInput) error {
+func runExecSteps(prepResult *runPrepResult) error {
 	weekDays := common.GetWeekRange(time.Now())
 
 	for i, d := range weekDays {
-		for _, input := range tasks {
+		for _, input := range prepResult.taskParser.Tasks {
 			if input == nil {
 				continue
 			}
@@ -186,7 +190,7 @@ func runExecSteps(userId string, client *intervals_api.Client, tasks []*common.T
 
 			// Create time task request
 			createTime := &intervals_api.CreateTimeRequest{
-				PersonId: userId,
+				PersonId: prepResult.userId,
 				Date:     d.Format("2006-01-02"),
 				Time:     inputHours[i],
 			}
@@ -195,7 +199,7 @@ func runExecSteps(userId string, client *intervals_api.Client, tasks []*common.T
 
 			// Only process valid time task, i.e. hours > 0
 			if createTime.Time != 0 {
-				client.CreateTime(createTime)
+				prepResult.client.CreateTime(createTime)
 			}
 		}
 	}
@@ -205,13 +209,13 @@ func runExecSteps(userId string, client *intervals_api.Client, tasks []*common.T
 
 func (c *runCmd) Run() error {
 	// Prep checks
-	userId, client, taskParser, err := runPrepSteps()
+	prepResult, err := runPrepSteps()
 	if err != nil {
 		return err
 	}
 
 	// Real work
-	err = runExecSteps(userId, client, taskParser.Tasks)
+	err = runExecSteps(prepResult)
 	if err != nil {
 		return err
 	}
