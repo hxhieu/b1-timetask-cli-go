@@ -14,14 +14,13 @@ on:
         description: 'Environment'
         type: environment
         required: true
-env:
-  COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
     name: Build and test
+    environment: default
     steps:
     - uses: actions/checkout@v4
 
@@ -35,5 +34,7 @@ jobs:
 
     - name: Test
       run: ./scripts/run-tests.sh
+      env:
+        COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
         
         
