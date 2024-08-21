@@ -17,7 +17,7 @@ type createTimePrepResult struct {
 	tasks  []*common.TimeTaskInput
 }
 
-func createTimePrepSteps(debug bool, inputFile *string) (*createTimePrepResult, *intervals_api.Client, error) {
+func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResult, *intervals_api.Client, error) {
 	// Shared vars between steps
 	result := &createTimePrepResult{}
 	var client *intervals_api.Client
@@ -35,7 +35,7 @@ func createTimePrepSteps(debug bool, inputFile *string) (*createTimePrepResult, 
 	if token, err := common.GetUserToken(); err == nil {
 
 		// API client
-		client = intervals_api.New(token, debug)
+		client = intervals_api.New(token, ctx.Debug)
 
 		// Fetch the user
 		if me, err := client.Me(); err == nil {
@@ -130,13 +130,16 @@ func createTimePrepSteps(debug bool, inputFile *string) (*createTimePrepResult, 
 
 	taskParser.DebugPrint()
 	result.tasks = taskParser.Tasks
-	console.Header("Press ENTER to process, or CTRL+C to terminate.")
-	fmt.Scanln()
+
+	if !ctx.Force {
+		console.Header("Press ENTER to process, or CTRL+C to terminate.")
+		fmt.Scanln()
+	}
 
 	return result, client, nil
 }
 
-func createTimeExecSteps(prepResult *createTimePrepResult, client *intervals_api.Client) error {
+func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals_api.Client) error {
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
 	setDefaultProgress(&pw)
@@ -193,21 +196,23 @@ func createTimeExecSteps(prepResult *createTimePrepResult, client *intervals_api
 	for pw.IsRenderInProgress() {
 	}
 
-	console.Header("All DONE! Press ENTER to exit.")
-	fmt.Scanln()
+	if !ctx.Force {
+		console.Header("All DONE! Press ENTER to exit.")
+		fmt.Scanln()
+	}
 
 	return nil
 }
 
 func (c *timeCreateCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	prepResult, client, err := createTimePrepSteps(ctx.Debug, c.InputFile)
+	prepResult, client, err := createTimePrepSteps(ctx, c.InputFile)
 	if err != nil {
 		return err
 	}
 
 	// Real work
-	err = createTimeExecSteps(prepResult, client)
+	err = createTimeExecSteps(ctx, prepResult, client)
 	if err != nil {
 		return err
 	}

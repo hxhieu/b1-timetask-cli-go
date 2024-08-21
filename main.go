@@ -15,6 +15,12 @@ func main() {
 			NoAppSummary: true,
 		}),
 	)
-	err := ctx.Run(cmd.CLIContext{Debug: cli.Debug})
+	err := ctx.Run(
+		// Bind the context with the flags
+		cmd.CLIContext{
+			Debug: cli.Debug,
+			Force: cli.Force,
+		},
+	)
 	ctx.FatalIfErrorf(err)
 }

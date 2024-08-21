@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug - GUI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "-d"
+            ]
+        },
+        {
             "name": "Debug - `time create`",
             "type": "go",
             "request": "launch",
@@ -13,7 +23,21 @@
             "args": [
                 "time",
                 "create",
-                "--debug"
+                "-d",
+                "-f"
+            ]
+        },
+        {
+            "name": "Debug - `time clear`",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "time",
+                "clear",
+                "-d",
+                "-f"
             ]
         }
     ]
