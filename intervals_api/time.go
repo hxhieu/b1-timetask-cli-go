@@ -3,7 +3,6 @@ package intervals_api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 )
@@ -17,10 +16,19 @@ type CreateTimeRequest struct {
 	ProjectId   string  `json:"projectid"`
 	WorkTypeId  string  `json:"worktypeid"`
 	Description string  `json:"description"`
+
+	// For display
+	WorkType string `json:"-"`
 }
 
 func (c *Client) CreateTime(createTime *CreateTimeRequest) error {
-	fmt.Printf("%v\n", *createTime)
+	if createTime == nil {
+		return errors.New("cannot create nil time task")
+	}
+	_, err := c.post("time", *createTime)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -43,6 +51,8 @@ func (t *CreateTimeRequest) ParseInput(input *common.TimeTaskInput) error {
 	if len(t.Description) == 0 {
 		t.Description = input.Title
 	}
+
+	t.WorkType = input.WorkType
 
 	return nil
 }
