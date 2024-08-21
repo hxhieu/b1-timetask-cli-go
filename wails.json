@@ -1,0 +1,13 @@
+{
+    "$schema": "https://wails.io/schemas/config.v2.json",
+    "name": "b1-timetask-cli-go",
+    "outputfilename": "b1-timetask-cli-go",
+    "frontend:install": "npm install",
+    "frontend:build": "npm run build",
+    "frontend:dev:watcher": "npm run dev",
+    "frontend:dev:serverUrl": "auto",
+    "author": {
+        "name": "Hugh Hoang",
+        "email": "hugh.hoang@gmail.com"
+    }
+}
