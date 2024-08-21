@@ -197,9 +197,9 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 			inputHours := input.Hours()
 
 			// Create time task request
-			createTime := &intervals_api.CreateTimeRequest{
+			createTime := &intervals_api.TimeEntry{
 				PersonId: prepResult.userId,
-				Date:     d.Format("2006-01-02"),
+				Date:     common.DateToString(d),
 				Time:     inputHours[i],
 			}
 			// Load from input

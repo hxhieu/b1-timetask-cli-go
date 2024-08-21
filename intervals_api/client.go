@@ -80,6 +80,21 @@ func (c *Client) post(endpoint string, data any) (*[]byte, error) {
 	return body, nil
 }
 
+func (c *Client) delete(endpoint string) error {
+	req, err := http.NewRequest("DELETE", c.baseUrl+endpoint, nil)
+	if err != nil {
+		return err
+	}
+	c.setAuth(req)
+
+	_, err = c.doRequest(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func New(token string, debugMode ...bool) *Client {
 	debug := false
 	if len(debugMode) > 0 {

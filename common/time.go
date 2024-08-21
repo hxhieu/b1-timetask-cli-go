@@ -22,3 +22,7 @@ func GetWeekRange(date time.Time, weekStartAt ...time.Weekday) []time.Time {
 	}
 	return result
 }
+
+func DateToString(date time.Time) string {
+	return date.Format("2006-01-02")
+}

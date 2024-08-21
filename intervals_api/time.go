@@ -3,11 +3,13 @@ package intervals_api
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/hxhieu/b1-timetask-cli-go/common"
+	"github.com/hxhieu/b1-timetask-cli-go/debug"
 )
 
-type CreateTimeRequest struct {
+type TimeEntry struct {
 	Billable    string  `json:"billable"`
 	Date        string  `json:"date"`
 	Time        float32 `json:"time"`
@@ -21,7 +23,11 @@ type CreateTimeRequest struct {
 	WorkType string `json:"-"`
 }
 
-func (c *Client) CreateTime(createTime *CreateTimeRequest) error {
+type GetTimeResponse struct {
+	Time []TimeEntry `json:"time"`
+}
+
+func (c *Client) CreateTime(createTime *TimeEntry) error {
 	if createTime == nil {
 		return errors.New("cannot create nil time task")
 	}
@@ -32,8 +38,46 @@ func (c *Client) CreateTime(createTime *CreateTimeRequest) error {
 	return nil
 }
 
+func (c *Client) GetTimeEntries(start time.Time, end time.Time) (*[]TimeEntry, error) {
+	debugFile := ".debug_time-entries.json"
+	if c.debug {
+		if debugData := debug.LoadDataFile[[]TimeEntry](debugFile); debugData != nil {
+			return debugData, nil
+		}
+	}
+
+	body, err := c.get("time?datebegin=" + common.DateToString(start) + "&dateend=" + common.DateToString(end))
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetTimeResponse{}
+	err = json.Unmarshal(*body, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	result := res.Time
+
+	if c.debug {
+		debug.WriteDataFile(debugFile, result)
+	}
+
+	return &result, nil
+}
+
+func (c *Client) DeleteTimeEntry(id string) error {
+
+	err := c.delete("time/" + id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Map from CSV input
-func (t *CreateTimeRequest) ParseInput(input *common.TimeTaskInput) error {
+func (t *TimeEntry) ParseInput(input *common.TimeTaskInput) error {
 	if input == nil {
 		return errors.New("the source input is nil")
 	}
