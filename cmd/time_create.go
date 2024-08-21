@@ -13,9 +13,6 @@ import (
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-type runCmd struct {
-}
-
 type runPrepResult struct {
 	userId string
 	tasks  []*common.TimeTaskInput
@@ -64,7 +61,7 @@ func setJobSuccess(job *progress.Tracker, message string) {
 	job.MarkAsDone()
 }
 
-func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
+func runPrepSteps(debug bool, inputFile *string) (*runPrepResult, *intervals_api.Client, error) {
 	// Shared vars between steps
 	result := &runPrepResult{}
 	var client *intervals_api.Client
@@ -103,7 +100,7 @@ func runPrepSteps(debug bool) (*runPrepResult, *intervals_api.Client, error) {
 		var tasks string
 		var projects string
 
-		if parser, err := common.NewTaskParser(); err == nil {
+		if parser, err := common.NewTaskParser(inputFile); err == nil {
 			for _, t := range parser.Tasks {
 				if t != nil {
 					tasks += t.Task + ","
@@ -240,9 +237,9 @@ func runExecSteps(prepResult *runPrepResult, client *intervals_api.Client) error
 	return nil
 }
 
-func (c *runCmd) Run(ctx CLIContext) error {
+func (c *timeCreateCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	prepResult, client, err := runPrepSteps(ctx.Debug)
+	prepResult, client, err := runPrepSteps(ctx.Debug, c.InputFile)
 	if err != nil {
 		return err
 	}
