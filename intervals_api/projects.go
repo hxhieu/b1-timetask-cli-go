@@ -2,7 +2,8 @@ package intervals_api
 
 import (
 	"encoding/json"
-	"os"
+
+	"github.com/hxhieu/b1-timetask-cli-go/debug"
 )
 
 type ProjectWorkType struct {
@@ -20,11 +21,8 @@ type ProjectWorkTypeResponse struct {
 func (c *Client) FetchProjectWorkTypes(projects string, active ...string) (*[]ProjectWorkType, error) {
 	debugFile := ".debug_project-worktype.json"
 	if c.debug {
-		if buf, err := os.ReadFile(debugFile); err == nil {
-			debugData := []ProjectWorkType{}
-			if err = json.Unmarshal(buf, &debugData); err == nil {
-				return &debugData, nil
-			}
+		if debugData := debug.LoadDataFile[[]ProjectWorkType](debugFile); debugData != nil {
+			return debugData, nil
 		}
 	}
 
@@ -44,10 +42,9 @@ func (c *Client) FetchProjectWorkTypes(projects string, active ...string) (*[]Pr
 	}
 
 	result := res.ProjectWorkType
+
 	if c.debug {
-		if debugData, err := json.MarshalIndent(result, "", "\t"); err == nil {
-			os.WriteFile(debugFile, debugData, 0644)
-		}
+		debug.WriteDataFile(debugFile, result)
 	}
 
 	return &result, nil

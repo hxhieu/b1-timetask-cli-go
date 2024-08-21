@@ -3,7 +3,8 @@ package intervals_api
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+
+	"github.com/hxhieu/b1-timetask-cli-go/debug"
 )
 
 type Me struct {
@@ -20,11 +21,8 @@ type MeResponse struct {
 func (c *Client) Me() (*Me, error) {
 	debugFile := ".debug_me.json"
 	if c.debug {
-		if buf, err := os.ReadFile(debugFile); err == nil {
-			me := Me{}
-			if err = json.Unmarshal(buf, &me); err == nil {
-				return &me, nil
-			}
+		if debugData := debug.LoadDataFile[Me](debugFile); debugData != nil {
+			return debugData, nil
 		}
 	}
 
@@ -46,9 +44,7 @@ func (c *Client) Me() (*Me, error) {
 	result := res.Me[0]
 
 	if c.debug {
-		if debugData, err := json.MarshalIndent(result, "", "\t"); err == nil {
-			os.WriteFile(debugFile, debugData, 0644)
-		}
+		debug.WriteDataFile(debugFile, result)
 	}
 
 	return &result, nil
