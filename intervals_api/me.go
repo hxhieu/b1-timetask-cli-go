@@ -3,6 +3,7 @@ package intervals_api
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 )
 
 type Me struct {
@@ -17,6 +18,16 @@ type MeResponse struct {
 }
 
 func (c *Client) Me() (*Me, error) {
+	debugFile := ".debug_me.json"
+	if c.debug {
+		if buf, err := os.ReadFile(debugFile); err == nil {
+			me := Me{}
+			if err = json.Unmarshal(buf, &me); err == nil {
+				return &me, nil
+			}
+		}
+	}
+
 	body, err := c.get("me")
 	if err != nil {
 		return nil, err
@@ -32,5 +43,13 @@ func (c *Client) Me() (*Me, error) {
 		return nil, fmt.Errorf("cannot find the match user with the provided token")
 	}
 
-	return &res.Me[0], nil
+	result := res.Me[0]
+
+	if c.debug {
+		if debugData, err := json.MarshalIndent(result, "", "\t"); err == nil {
+			os.WriteFile(debugFile, debugData, 0644)
+		}
+	}
+
+	return &result, nil
 }

@@ -2,6 +2,7 @@ package intervals_api
 
 import (
 	"encoding/json"
+	"os"
 )
 
 type Task struct {
@@ -16,6 +17,16 @@ type TasksReponse struct {
 }
 
 func (c *Client) FetchTasks(tasks string) (*[]Task, error) {
+	debugFile := ".debug_tasks.json"
+	if c.debug {
+		if buf, err := os.ReadFile(debugFile); err == nil {
+			debugData := []Task{}
+			if err = json.Unmarshal(buf, &debugData); err == nil {
+				return &debugData, nil
+			}
+		}
+	}
+
 	body, err := c.get("task?localid=" + tasks)
 	if err != nil {
 		return nil, err
@@ -27,5 +38,12 @@ func (c *Client) FetchTasks(tasks string) (*[]Task, error) {
 		return nil, err
 	}
 
-	return &res.Task, nil
+	result := res.Task
+	if c.debug {
+		if debugData, err := json.MarshalIndent(result, "", "\t"); err == nil {
+			os.WriteFile(debugFile, debugData, 0644)
+		}
+	}
+
+	return &result, nil
 }

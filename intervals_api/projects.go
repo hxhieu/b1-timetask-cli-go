@@ -1,6 +1,9 @@
 package intervals_api
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"os"
+)
 
 type ProjectWorkType struct {
 	Id         string `json:"id"`
@@ -15,6 +18,16 @@ type ProjectWorkTypeResponse struct {
 }
 
 func (c *Client) FetchProjectWorkTypes(projects string, active ...string) (*[]ProjectWorkType, error) {
+	debugFile := ".debug_project-worktype.json"
+	if c.debug {
+		if buf, err := os.ReadFile(debugFile); err == nil {
+			debugData := []ProjectWorkType{}
+			if err = json.Unmarshal(buf, &debugData); err == nil {
+				return &debugData, nil
+			}
+		}
+	}
+
 	activeFlag := "t"
 	if len(active) > 0 {
 		activeFlag = active[0]
@@ -30,5 +43,12 @@ func (c *Client) FetchProjectWorkTypes(projects string, active ...string) (*[]Pr
 		return nil, err
 	}
 
-	return &res.ProjectWorkType, nil
+	result := res.ProjectWorkType
+	if c.debug {
+		if debugData, err := json.MarshalIndent(result, "", "\t"); err == nil {
+			os.WriteFile(debugFile, debugData, 0644)
+		}
+	}
+
+	return &result, nil
 }

@@ -10,6 +10,7 @@ import (
 type Client struct {
 	baseUrl string
 	token   string
+	debug   bool
 }
 
 var httpClient = &http.Client{}
@@ -45,10 +46,15 @@ func (c *Client) get(endpoint string) ([]byte, error) {
 	return body, nil
 }
 
-func New(token string) *Client {
+func New(token string, debugMode ...bool) *Client {
+	debug := false
+	if len(debugMode) > 0 {
+		debug = debugMode[0]
+	}
 	api := Client{
 		baseUrl: "https://api.myintervals.com/",
 		token:   token,
+		debug:   debug,
 	}
 	return &api
 }
