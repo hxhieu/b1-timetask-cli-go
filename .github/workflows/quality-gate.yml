@@ -9,18 +9,18 @@ on:
   pull_request:
     branches: [ "master" ]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment'
-        type: environment
-        required: true
+    # inputs:
+    #   environment:
+    #     description: 'Environment'
+    #     type: environment
+    #     required: true
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
     name: Build and test
-    environment: ${{ github.event.inputs.environment }}
+    environment: default
     steps:
     - uses: actions/checkout@v4
 
