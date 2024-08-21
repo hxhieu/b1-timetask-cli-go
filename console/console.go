@@ -8,7 +8,7 @@ import (
 
 func Error(err string) {
 	c := color.New(color.FgRed).Add(color.Bold)
-	c.Print(err)
+	fmt.Print(c.Sprint(err))
 }
 
 func ErrorLn(err string) {
@@ -17,7 +17,7 @@ func ErrorLn(err string) {
 
 func Success(msg string) {
 	c := color.New(color.FgHiGreen).Add(color.BgWhite).Add(color.Bold)
-	c.Print(msg)
+	fmt.Print(c.Sprint(msg))
 }
 
 func SuccessLn(msg string) {
@@ -26,7 +26,7 @@ func SuccessLn(msg string) {
 
 func Info(msg string) {
 	c := color.New(color.FgWhite)
-	c.Print(msg)
+	fmt.Print(c.Sprint(msg))
 }
 
 func InfoLn(msg string) {
@@ -35,7 +35,7 @@ func InfoLn(msg string) {
 
 func Warn(msg string) {
 	c := color.New(color.FgHiYellow)
-	c.Print(msg)
+	fmt.Print(c.Sprint(msg))
 }
 
 func WarnLn(msg string) {
@@ -44,5 +44,5 @@ func WarnLn(msg string) {
 
 func Header(header string) {
 	c := color.New(color.FgWhite).Add(color.Bold)
-	c.Printf(" %s \n", header)
+	fmt.Print(c.Sprintf("%s\n", header))
 }
