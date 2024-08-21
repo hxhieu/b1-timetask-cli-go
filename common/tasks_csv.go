@@ -10,8 +10,8 @@ import (
 type TimeTaskInput struct {
 	Task     string  `csv:"task"`
 	WorkType string  `csv:"work_type"`
-	Desc     string  `csv:"desc"`
-	Billable string  `csv:"billable"`
+	Desc     string  `csv:"desc" json:"description"`
+	Billable string  `csv:"billable" json:"billable"`
 	Mon      float32 `csv:"mon"`
 	Tue      float32 `csv:"tue"`
 	Wed      float32 `csv:"wed"`
@@ -22,10 +22,10 @@ type TimeTaskInput struct {
 
 	// From remote source
 
-	Id         string
+	Id         string `json:"taskid"`
 	Title      string
-	ProjectId  string
-	WorkTypeId string
+	ProjectId  string `json:"projectid"`
+	WorkTypeId string `json:"worktypeid"`
 }
 
 type TaskCsvParser struct {
@@ -100,4 +100,9 @@ func (p *TaskCsvParser) DebugPrint() {
 		t.AppendSeparator()
 	}
 	t.Render()
+}
+
+// Convert the day hour properties to day indexed array
+func (i *TimeTaskInput) Hours() []float32 {
+	return []float32{i.Mon, i.Tue, i.Wed, i.Thu, i.Fri, i.Sat, i.Sun}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -49,10 +50,11 @@ func setJobSuccess(job *progress.Tracker, message string) {
 	job.Increment(1)
 }
 
-func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
+func runPrepSteps() (string, *intervals_api.Client, *common.TaskCsvParser, error) {
 	// Shared vars between steps
 	var client *intervals_api.Client
 	var taskParser *common.TaskCsvParser
+	var userId string
 
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
@@ -71,6 +73,7 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 
 		// Fetch the user
 		if me, err := client.Me(); err == nil {
+			userId = me.Id
 			setJobSuccess(job, fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
 		} else {
 			setJobError(job, err)
@@ -161,29 +164,54 @@ func runPrepSteps() (*intervals_api.Client, *common.TaskCsvParser, error) {
 	}
 
 	if job.IsErrored() {
-		return nil, nil, errors.New("one or more steps throwing errors")
+		return userId, nil, nil, errors.New("one or more steps throwing errors")
 	}
 
 	taskParser.DebugPrint()
 	console.Header("Press ENTER to process, or CTRL+C to terminate.")
 	fmt.Scanln()
 
-	return client, taskParser, nil
+	return userId, client, taskParser, nil
 }
 
-func runExecSteps(client *intervals_api.Client, tasks []*common.TimeTaskInput) error {
+func runExecSteps(userId string, client *intervals_api.Client, tasks []*common.TimeTaskInput) error {
+	weekDays := common.GetWeekRange(time.Now())
+
+	for i, d := range weekDays {
+		for _, input := range tasks {
+			if input == nil {
+				continue
+			}
+			inputHours := input.Hours()
+
+			// Create time task request
+			createTime := &intervals_api.CreateTimeRequest{
+				PersonId: userId,
+				Date:     d.Format("2006-01-02"),
+				Time:     inputHours[i],
+			}
+			// Load from input
+			createTime.ParseInput(input)
+
+			// Only process valid time task, i.e. hours > 0
+			if createTime.Time != 0 {
+				client.CreateTime(createTime)
+			}
+		}
+	}
+
 	return nil
 }
 
 func (c *runCmd) Run() error {
 	// Prep checks
-	client, taskParser, err := runPrepSteps()
+	userId, client, taskParser, err := runPrepSteps()
 	if err != nil {
 		return err
 	}
 
 	// Real work
-	err = runExecSteps(client, taskParser.Tasks)
+	err = runExecSteps(userId, client, taskParser.Tasks)
 	if err != nil {
 		return err
 	}
