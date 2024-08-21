@@ -34,4 +34,5 @@ jobs:
     - name: Test
       run: ./scripts/run-tests.sh
       env:
-        COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+        COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
+        
