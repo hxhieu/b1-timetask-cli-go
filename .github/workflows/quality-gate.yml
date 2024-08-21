@@ -19,6 +19,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    name: Build and test
     steps:
     - uses: actions/checkout@v4
 
@@ -32,3 +33,5 @@ jobs:
 
     - name: Test
       run: ./scripts/run-tests.sh
+      env:
+        COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
