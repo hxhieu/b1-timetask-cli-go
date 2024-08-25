@@ -5,9 +5,9 @@ name: Quality Gate
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
   workflow_dispatch:
     # inputs:
     #   environment:
@@ -16,25 +16,25 @@ on:
     #     required: true
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
-    name: Build and test
+    name: Build and Test
     environment: default
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23.0'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.0"
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build Hybrid - Linux
+        uses: dAppServer/wails-build-action@v2.2
+        with:
+          build-name: b1-timetask-cli-go
+          build-platform: linux/amd64
 
-    - name: Test
-      run: ./scripts/run-tests.sh
-      env:
-        COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
-        
-        
+      - name: Test
+        run: ./scripts/run-tests.sh
+        env:
+          COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
