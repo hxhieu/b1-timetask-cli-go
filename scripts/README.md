@@ -1,5 +1,5 @@
-Run these on the root folder i.e.
+Run these on the root folder, for example
 
 ```
-./scripts/build.sh
+./scripts/run-tests.sh
 ```

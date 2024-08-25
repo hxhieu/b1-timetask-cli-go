@@ -10,7 +10,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-func clearTimePrepSteps(debug bool) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
+func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
 	var client *intervals_api.Client
 	var result *[]intervals_api.TimeEntry
 
@@ -26,7 +26,7 @@ func clearTimePrepSteps(debug bool) (*[]intervals_api.TimeEntry, *intervals_api.
 	if token, err := common.GetUserToken(); err == nil {
 
 		// API client
-		client = intervals_api.New(token, debug)
+		client = intervals_api.New(token, ctx.Debug)
 
 		// Fetch tasks
 		weekDays := common.GetWeekRange(time.Now())
@@ -45,13 +45,15 @@ func clearTimePrepSteps(debug bool) (*[]intervals_api.TimeEntry, *intervals_api.
 	for pw.IsRenderInProgress() {
 	}
 
-	console.Header("This is destructive and irreversable! Press ENTER to process, or CTRL+C to terminate.")
-	fmt.Scanln()
+	if !ctx.Force {
+		console.Header("This is destructive and irreversable! Press ENTER to process, or CTRL+C to terminate.")
+		fmt.Scanln()
+	}
 
 	return result, client, nil
 }
 
-func clearTimeExecSteps(tasks *[]intervals_api.TimeEntry, client *intervals_api.Client) error {
+func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client *intervals_api.Client) error {
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
 	setDefaultProgress(&pw)
@@ -81,21 +83,23 @@ func clearTimeExecSteps(tasks *[]intervals_api.TimeEntry, client *intervals_api.
 	for pw.IsRenderInProgress() {
 	}
 
-	console.Header("All DONE! Press ENTER to exit.")
-	fmt.Scanln()
+	if !ctx.Force {
+		console.Header("All DONE! Press ENTER to exit.")
+		fmt.Scanln()
+	}
 
 	return nil
 }
 
 func (c *timeClearCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	tasks, client, err := clearTimePrepSteps(ctx.Debug)
+	tasks, client, err := clearTimePrepSteps(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Real work
-	err = clearTimeExecSteps(tasks, client)
+	err = clearTimeExecSteps(ctx, tasks, client)
 	if err != nil {
 		return err
 	}

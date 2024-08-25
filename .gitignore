@@ -1,6 +1,8 @@
-.bin
+build
 .token
 .debug*
 .coverage/*
 !.coverage/.gitkeep
+node_modules
+frontend/dist
 tasks.csv

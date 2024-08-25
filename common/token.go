@@ -12,7 +12,7 @@ import (
 )
 
 var TOKEN_SAVED_FILE = ".timetask-token"
-var forgetLoginReminder = "Did you forget initialsing the CLI, with `login`?"
+var forgetLoginReminder = "Did you forget to login?"
 
 func getSaveTokenPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
