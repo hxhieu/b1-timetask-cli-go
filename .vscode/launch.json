@@ -12,8 +12,20 @@
             "program": "${workspaceFolder}",
             "args": [
                 "time",
-                "create",
-                "--debug"
+                "create"
+            ]
+        },
+        {
+            "name": "Debug - `time clear`",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "time",
+                "clear",
+                "-d",
+                "-f"
             ]
         }
     ]

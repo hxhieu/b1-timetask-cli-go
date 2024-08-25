@@ -2,6 +2,7 @@ package intervals_api
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/hxhieu/b1-timetask-cli-go/debug"
 )
@@ -25,7 +26,9 @@ func (c *Client) FetchTasks(tasks string) (*[]Task, error) {
 		}
 	}
 
-	body, err := c.get("task?localid=" + tasks)
+	// Default lmit is 10, so we need to override it with something bigger
+	limit := 100
+	body, err := c.get(fmt.Sprintf("task?localid=%s&limit=%d", tasks, limit))
 	if err != nil {
 		return nil, err
 	}
