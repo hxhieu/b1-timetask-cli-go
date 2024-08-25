@@ -1,3 +1,5 @@
+//go:build !linux
+
 package cmd
 
 import (
@@ -7,9 +9,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
-
-type guiCmd struct {
-}
 
 func (c *guiCmd) Run(ctx CLIContext) error {
 	if !ctx.Experimental {
