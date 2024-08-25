@@ -2,6 +2,7 @@ package intervals_api
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/hxhieu/b1-timetask-cli-go/debug"
 )
@@ -30,7 +31,10 @@ func (c *Client) FetchProjectWorkTypes(projects string, active ...string) (*[]Pr
 	if len(active) > 0 {
 		activeFlag = active[0]
 	}
-	body, err := c.get("projectworktype?active=" + activeFlag + "&projectid=" + projects)
+
+	// Default lmit is 10, so we need to override it with something bigger
+	limit := 100
+	body, err := c.get(fmt.Sprintf("projectworktype?active=%s&projectid=%s&limit=%d", activeFlag, projects, limit))
 	if err != nil {
 		return nil, err
 	}
