@@ -11,16 +11,15 @@ type ToolbarLabel struct {
 	label       *widget.Label
 }
 
+// Implements ToolbarObject
 func (t *ToolbarLabel) ToolbarObject() fyne.CanvasObject {
 	return t.label
 }
 
-func NewToolbarLabel(text string) *ToolbarLabel {
-	b := binding.NewString()
-	b.Set(text)
-	l := widget.NewLabelWithData(b)
+func NewToolbarLabel(text *binding.String) *ToolbarLabel {
+	l := widget.NewLabelWithData(*text)
 	return &ToolbarLabel{
-		textBinding: &b,
+		textBinding: text,
 		label:       l,
 	}
 }
