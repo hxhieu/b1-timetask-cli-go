@@ -1,4 +1,4 @@
-package intervals_api
+package intervals
 
 import (
 	"bytes"

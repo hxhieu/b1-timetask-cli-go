@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hxhieu/b1-timetask-cli-go/api/intervals"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/console"
-	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
@@ -17,10 +17,10 @@ type createTimePrepResult struct {
 	tasks  []*common.TimeTaskInput
 }
 
-func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResult, *intervals_api.Client, error) {
+func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResult, *intervals.Client, error) {
 	// Shared vars between steps
 	result := &createTimePrepResult{}
-	var client *intervals_api.Client
+	var client *intervals.Client
 	var taskParser *common.TaskCsvParser
 
 	// instantiate a Progress Writer and set up the options
@@ -35,7 +35,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResu
 	if token, err := common.GetUserToken(); err == nil {
 
 		// API client
-		client = intervals_api.New(token, ctx.Debug)
+		client = intervals.New(token, ctx.Debug)
 
 		// Fetch the user
 		if me, err := client.Me(); err == nil {
@@ -139,7 +139,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResu
 	return result, client, nil
 }
 
-func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals_api.Client) error {
+func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals.Client) error {
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
 	setDefaultProgress(&pw)
@@ -162,7 +162,7 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			}
 
 			// Create time task request
-			createTime := &intervals_api.TimeEntry{
+			createTime := &intervals.TimeEntry{
 				PersonId: prepResult.userId,
 				Date:     common.DateToString(d),
 				// Need a string for remote payload

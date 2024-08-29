@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hxhieu/b1-timetask-cli-go/api/intervals"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/console"
-	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
-	var client *intervals_api.Client
-	var result *[]intervals_api.TimeEntry
+func clearTimePrepSteps(ctx CLIContext) (*[]intervals.TimeEntry, *intervals.Client, error) {
+	var client *intervals.Client
+	var result *[]intervals.TimeEntry
 
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
@@ -26,7 +26,7 @@ func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_
 	if token, err := common.GetUserToken(); err == nil {
 
 		// API client
-		client = intervals_api.New(token, ctx.Debug)
+		client = intervals.New(token, ctx.Debug)
 
 		// Fetch tasks
 		weekDays := common.GetWeekRange(time.Now())
@@ -53,7 +53,7 @@ func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_
 	return result, client, nil
 }
 
-func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client *intervals_api.Client) error {
+func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals.TimeEntry, client *intervals.Client) error {
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
 	setDefaultProgress(&pw)

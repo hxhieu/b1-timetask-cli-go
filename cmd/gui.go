@@ -23,7 +23,7 @@ func (c *guiCmd) Run(ctx CLIContext) error {
 
 	// Create application with options
 	if err := wails.Run(&options.App{
-		Title:  "B1 TimeTask CLI GUI",
+		Title:  APP_TITLE,
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{

@@ -2,6 +2,8 @@ package cmd
 
 import "embed"
 
+var APP_TITLE = "B1 TimeTask Tools"
+
 // Sub commands
 
 type guiCmd struct {
