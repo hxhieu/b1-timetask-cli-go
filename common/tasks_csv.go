@@ -3,6 +3,7 @@ package common
 import (
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/gocarina/gocsv"
 	"github.com/jedib0t/go-pretty/v6/table"
 )
@@ -35,12 +36,36 @@ type TaskCsvParser struct {
 // Default input file
 var TASK_CSV_FILE = "tasks.csv"
 
+func formatTotalHours(h float32) string {
+	c := color.New(color.Bold)
+	if h == 8 {
+		c.Add(color.FgHiGreen)
+	} else if h > 8 {
+		c.Add(color.FgYellow)
+	} else if h < 8 {
+		c.Add(color.FgHiRed)
+	}
+	return c.Sprintf("%.2f", h)
+}
+
+func formatWeekTotalHours(h float32) string {
+	c := color.New(color.Bold)
+	if h >= 40 {
+		c.Add(color.FgHiGreen)
+	} else if h <= 40 {
+		c.Add(color.FgHiRed)
+	}
+	return c.Sprintf("TOTAL: %.2f", h)
+}
+
 func NewTaskParser(inputFile *string) (*TaskCsvParser, error) {
 	f := TASK_CSV_FILE
 	if inputFile != nil {
 		f = *inputFile
 	}
-	parser := &TaskCsvParser{}
+	parser := &TaskCsvParser{
+		Tasks: make([]*TimeTaskInput, 0),
+	}
 
 	// Read the file
 	buffer, err := os.ReadFile(f)
@@ -54,7 +79,12 @@ func NewTaskParser(inputFile *string) (*TaskCsvParser, error) {
 		return nil, err
 	}
 
-	parser.Tasks = tasks
+	// Only take tasks having hours
+	for _, t := range tasks {
+		if t.TotalHours() > 0 {
+			parser.Tasks = append(parser.Tasks, t)
+		}
+	}
 
 	return parser, nil
 }
@@ -67,10 +97,10 @@ func (p *TaskCsvParser) DebugPrint() {
 		"ID",
 		"Desc",
 		"Title",
-		"WorkType",
+		"Billable",
 		"WorkType ID",
 		"Project ID",
-		"Billable",
+		"WorkType",
 		"Mon",
 		"Tue",
 		"Wed",
@@ -79,6 +109,9 @@ func (p *TaskCsvParser) DebugPrint() {
 		"Sat",
 		"Sun",
 	})
+
+	dailySum := make([]float32, 7)
+	weekSum := float32(0.0)
 	for _, task := range p.Tasks {
 		if task == nil {
 			t.AppendRow([]interface{}{"-"})
@@ -88,10 +121,10 @@ func (p *TaskCsvParser) DebugPrint() {
 				task.Id,
 				task.Desc,
 				task.Title,
-				task.WorkType,
+				task.Billable,
 				task.WorkTypeId,
 				task.ProjectId,
-				task.Billable,
+				task.WorkType,
 				task.Mon,
 				task.Tue,
 				task.Wed,
@@ -100,13 +133,43 @@ func (p *TaskCsvParser) DebugPrint() {
 				task.Sat,
 				task.Sun,
 			})
+			dailySum[0] += task.Mon
+			dailySum[1] += task.Tue
+			dailySum[2] += task.Wed
+			dailySum[3] += task.Thu
+			dailySum[4] += task.Fri
+			dailySum[5] += task.Sat
+			dailySum[6] += task.Sun
+			weekSum += task.Mon + task.Tue + task.Wed + task.Thu + task.Fri + task.Sat + task.Sun
 		}
 		t.AppendSeparator()
 	}
+	t.AppendRow([]interface{}{
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		formatWeekTotalHours(weekSum),
+		formatTotalHours(dailySum[0]),
+		formatTotalHours(dailySum[1]),
+		formatTotalHours(dailySum[2]),
+		formatTotalHours(dailySum[3]),
+		formatTotalHours(dailySum[4]),
+		formatTotalHours(dailySum[5]),
+		formatTotalHours(dailySum[6]),
+	})
 	t.Render()
 }
 
 // Convert the day hour properties to day indexed array
 func (i *TimeTaskInput) Hours() []float32 {
 	return []float32{i.Mon, i.Tue, i.Wed, i.Thu, i.Fri, i.Sat, i.Sun}
+}
+
+// Total hours for a task from input
+func (i *TimeTaskInput) TotalHours() float32 {
+	return i.Mon + i.Tue + i.Wed + i.Thu + i.Fri + i.Sat + i.Sun
 }

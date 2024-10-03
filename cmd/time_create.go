@@ -76,6 +76,10 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResu
 							localTask.ProjectId = remoteTask.ProjectId
 							localTask.Id = remoteTask.Id
 							localTask.Title = remoteTask.Title
+							// Truncate long title
+							if len(localTask.Title) > 50 {
+								localTask.Title = localTask.Title[:50]
+							}
 						}
 					}
 				}
