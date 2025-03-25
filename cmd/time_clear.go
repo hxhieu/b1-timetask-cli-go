@@ -10,9 +10,11 @@ import (
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
+func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
 	var client *intervals_api.Client
 	var result *[]intervals_api.TimeEntry
+
+	weekDays := common.GetWeekRange(time.Now(), weekOffset)
 
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
@@ -21,7 +23,7 @@ func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_
 	go pw.Render()
 
 	// Fetch time entries job
-	job := newJobTrack(pw, "Fetch current week time tasks")
+	job := newJobTrack(pw, "Fetch week time tasks")
 
 	if token, err := common.GetUserToken(); err == nil {
 
@@ -29,7 +31,6 @@ func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_
 		client = intervals_api.New(token, ctx.Debug)
 
 		// Fetch tasks
-		weekDays := common.GetWeekRange(time.Now())
 		if tasks, err := client.GetTimeEntries(weekDays[0], weekDays[len(weekDays)-1]); err == nil {
 			result = tasks
 			setJobSuccess(job, fmt.Sprintf("Found %d task(s)", len(*tasks)))
@@ -44,6 +45,8 @@ func clearTimePrepSteps(ctx CLIContext) (*[]intervals_api.TimeEntry, *intervals_
 	time.Sleep(time.Millisecond * 100)
 	for pw.IsRenderInProgress() {
 	}
+
+	console.PrintWeekRange(common.DateToString(weekDays[0]), common.DateToString(weekDays[6]), weekOffset)
 
 	if !ctx.Force {
 		console.Header("This is destructive and irreversable! Press ENTER to process, or CTRL+C to terminate.")
@@ -93,7 +96,7 @@ func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client
 
 func (c *timeClearCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	tasks, client, err := clearTimePrepSteps(ctx)
+	tasks, client, err := clearTimePrepSteps(ctx, c.WeekOffset)
 	if err != nil {
 		return err
 	}

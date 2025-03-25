@@ -46,3 +46,19 @@ func Header(header string) {
 	c := color.New(color.FgWhite).Add(color.Bold)
 	fmt.Print(c.Sprintf("%s\n", header))
 }
+
+func PrintWeekRange(start, end string, weekOffset int) {
+	c := color.New(color.FgYellow).Add(color.Bold)
+	warnColor := color.New(color.FgGreen).Add(color.Bold)
+	warnText := "For Current week"
+	if weekOffset != 0 {
+		warnColor = color.New(color.FgRed).Add(color.Bold)
+		warnText = fmt.Sprintf("For %d week(s) ", weekOffset)
+		if weekOffset > 0 {
+			warnText += "from now"
+		} else {
+			warnText += "in the past"
+		}
+	}
+	fmt.Print(c.Sprintf("%s %s - %s\n", warnColor.Sprint(warnText), c.Sprint(start), c.Sprint(end)))
+}
