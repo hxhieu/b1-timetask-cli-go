@@ -41,7 +41,7 @@ type CLI struct {
 	Force        bool `help:"Supress all prompts." short:"f"`
 	Experimental bool `help:"Run with experimental features." short:"x" env:"X_MODE"`
 
-	Gui   guiCmd   `cmd:"" help:"Launch a GUI app *NOT YET IMPLEMENTED*" default:"1"`
+	Gui   guiCmd   `cmd:"" help:"Launch a GUI app *EXPERIMENTAL*" default:"1"`
 	Login loginCmd `cmd:"" help:"Initialise the CLI, by logging in with an user token."`
 	Time  timeCmd  `cmd:"" help:"Time related sub commands"`
 }

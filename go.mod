@@ -4,6 +4,8 @@ go 1.23.0
 
 require (
 	fyne.io/fyne/v2 v2.5.5
+	gioui.org v0.8.0
+	gioui.org/x v0.8.1
 	github.com/alecthomas/kong v1.9.0
 	github.com/fatih/color v1.18.0
 	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1
@@ -13,6 +15,7 @@ require (
 
 require (
 	fyne.io/systray v1.11.0 // indirect
+	gioui.org/shader v1.0.8 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -58,6 +61,8 @@ require (
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	github.com/yuin/goldmark v1.7.8 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
+	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/mobile v0.0.0-20250305212854-3a7bc9f8a4de // indirect
 	golang.org/x/net v0.37.0 // indirect

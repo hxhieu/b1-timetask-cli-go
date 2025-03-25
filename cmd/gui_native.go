@@ -3,7 +3,8 @@
 package cmd
 
 import (
-	mygui "github.com/hxhieu/b1-timetask-cli-go/gui/fyne"
+	// mygui "github.com/hxhieu/b1-timetask-cli-go/gui/fyne"
+	mygui "github.com/hxhieu/b1-timetask-cli-go/gui/gio"
 )
 
 func (c *guiCmd) Run(ctx CLIContext) error {
