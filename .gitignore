@@ -8,3 +8,4 @@ frontend/dist/*
 !frontend/dist/.gitkeep
 tasks*.csv
 *.apk
+b1-timetask-cli-go

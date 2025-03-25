@@ -3,20 +3,19 @@ package common
 import "time"
 
 // Week starts
-func GetWeekStart(date time.Time, weekStartAt ...time.Weekday) time.Time {
+func GetWeekStart(date time.Time) time.Time {
 	startAt := time.Monday
-	if len(weekStartAt) > 0 {
-		startAt = weekStartAt[0]
-	}
 	offset := (int(startAt) - int(date.Weekday()) - 7) % 7
 	result := date.Add(time.Duration(offset*24) * time.Hour)
 	return result
 }
 
-// From `weekStartAt` to next 7 days
-func GetWeekRange(date time.Time, weekStartAt ...time.Weekday) []time.Time {
+// From `date` as start of week to next 7 days
+func GetWeekRange(date time.Time, weekOffset int) []time.Time {
+	// Add week offset
+	actualDate := date.Add(time.Hour * 24 * 7 * time.Duration(weekOffset))
 	result := make([]time.Time, 0)
-	weekStart := GetWeekStart(date)
+	weekStart := GetWeekStart(actualDate)
 	for i := range 7 {
 		result = append(result, weekStart.AddDate(0, 0, i))
 	}
