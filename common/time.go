@@ -10,10 +10,12 @@ func GetWeekStart(date time.Time) time.Time {
 	return result
 }
 
-// From `date` to next 7 days
-func GetWeekRange(date time.Time) []time.Time {
+// From `date` as start of week to next 7 days
+func GetWeekRange(date time.Time, weekOffset int) []time.Time {
+	// Add week offset
+	actualDate := date.Add(time.Hour * 24 * 7 * time.Duration(weekOffset))
 	result := make([]time.Time, 0)
-	weekStart := GetWeekStart(date)
+	weekStart := GetWeekStart(actualDate)
 	for i := range 7 {
 		result = append(result, weekStart.AddDate(0, 0, i))
 	}

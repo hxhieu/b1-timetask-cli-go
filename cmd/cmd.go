@@ -12,10 +12,12 @@ type loginCmd struct {
 }
 
 type timeCreateCmd struct {
-	InputFile *string `optional:"" help:"The input CSV file. Optional: Default to 'tasks.csv'"`
+	WeekOffset int     `help:"Number of weeks different from current week, negative offsets mean previous weeks." default:"0"`
+	InputFile  *string `optional:"" help:"The input CSV file. Optional: Default to 'tasks.csv'"`
 }
 
 type timeClearCmd struct {
+	WeekOffset int `help:"Number of weeks different from current week, negative offsets mean previous weeks." default:"0"`
 }
 
 type timeCmd struct {

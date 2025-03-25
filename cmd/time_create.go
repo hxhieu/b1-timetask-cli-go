@@ -135,22 +135,24 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResu
 	taskParser.DebugPrint()
 	result.tasks = taskParser.Tasks
 
-	if !ctx.Force {
-		console.Header("Press ENTER to process, or CTRL+C to terminate.")
-		fmt.Scanln()
-	}
-
 	return result, client, nil
 }
 
-func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals_api.Client) error {
+func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals_api.Client, weekOffset int) error {
 	// instantiate a Progress Writer and set up the options
 	pw := progress.NewWriter()
 	setDefaultProgress(&pw)
 
 	go pw.Render()
 
-	weekDays := common.GetWeekRange(time.Now())
+	weekDays := common.GetWeekRange(time.Now(), weekOffset)
+
+	console.PrintWeekRange(common.DateToString(weekDays[0]), common.DateToString(weekDays[6]), weekOffset)
+
+	if !ctx.Force {
+		console.Header("Press ENTER to process, or CTRL+C to terminate.")
+		fmt.Scanln()
+	}
 
 	for i, d := range weekDays {
 		for _, input := range prepResult.tasks {
@@ -216,7 +218,7 @@ func (c *timeCreateCmd) Run(ctx CLIContext) error {
 	}
 
 	// Real work
-	err = createTimeExecSteps(ctx, prepResult, client)
+	err = createTimeExecSteps(ctx, prepResult, client, c.WeekOffset)
 	if err != nil {
 		return err
 	}
