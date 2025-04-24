@@ -19,6 +19,14 @@ type Client struct {
 // and it is thread safe to do so
 var httpClient = &http.Client{}
 
+func (c *Client) handlerErrorBody(err error, body *[]byte) error {
+	bodyMsg := ""
+	if body != nil {
+		bodyMsg = string(*body)
+	}
+	return fmt.Errorf("%s %s", err.Error(), bodyMsg)
+}
+
 func (c *Client) setAuth(req *http.Request) {
 	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:x", c.token)))
 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s", auth))
@@ -53,7 +61,7 @@ func (c *Client) get(endpoint string) (*[]byte, error) {
 
 	body, err := c.doRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, c.handlerErrorBody(err, body)
 	}
 
 	return body, nil
@@ -74,7 +82,7 @@ func (c *Client) post(endpoint string, data any) (*[]byte, error) {
 
 	body, err := c.doRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, c.handlerErrorBody(err, body)
 	}
 
 	return body, nil
