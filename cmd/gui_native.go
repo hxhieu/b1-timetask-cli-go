@@ -7,6 +7,8 @@ import (
 	mygui "github.com/hxhieu/b1-timetask-cli-go/gui/gio"
 )
 
+// mygui "github.com/hxhieu/b1-timetask-cli-go/gui/gio"
+
 func (c *guiCmd) Run(ctx CLIContext) error {
 	mygui.NewNativeGui(APP_TITLE)
 	return nil

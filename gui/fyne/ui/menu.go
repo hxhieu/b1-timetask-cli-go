@@ -6,12 +6,11 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	uiWidget "github.com/hxhieu/b1-timetask-cli-go/gui/fyne/widget"
 )
 
 func NewMenu(appState *AppState) *widget.Toolbar {
-	userLabel := uiWidget.NewToolbarLabel(&appState.User)
-	spinner := uiWidget.NewToolbarActivity()
+	userLabel := NewToolbarLabel(&appState.User)
+	spinner := NewToolbarActivity()
 	actionButton := widget.NewToolbarAction(theme.LoginIcon(), func() {
 		if user, _ := appState.User.Get(); user == "Login" {
 			tokenEntry := widget.NewEntry()
@@ -37,7 +36,7 @@ func NewMenu(appState *AppState) *widget.Toolbar {
 	actionButton.ToolbarObject().Hide()
 
 	// Check user
-	go func(l *uiWidget.ToolbarActivity, state *AppState) {
+	go func(l *ToolbarActivity, state *AppState) {
 		if user, err := state.Common.InitUser(); err == nil {
 			state.User.Set(*user)
 			actionButton.Icon = theme.AccountIcon()

@@ -3,7 +3,6 @@ package fyne
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"github.com/hxhieu/b1-timetask-cli-go/gui/fyne/ui"
 )
 
@@ -20,8 +19,8 @@ func NewNativeGui(title string) {
 	appState.MainWindow = w
 
 	toolbar := ui.NewMenu(appState)
-
-	content := container.NewBorder(toolbar, nil, nil, nil, widget.NewLabel("Content"))
+	taskTable, _ := ui.NewTaskTable(appState)
+	content := container.NewBorder(toolbar, nil, nil, nil, taskTable)
 
 	w.SetContent(content)
 }
