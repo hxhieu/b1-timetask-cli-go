@@ -30,7 +30,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResu
 	go pw.Render()
 
 	// Check and fetch user job
-	job := newJobTrack(pw, "Check user")
+	job := newJobTrack(pw, "Check user", ctx)
 
 	if token, err := common.GetUserToken(); err == nil {
 
@@ -50,7 +50,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResu
 
 	// Parse and fetch tasks from CSV
 	if !job.IsErrored() {
-		job = newJobTrack(pw, "Check task inputs")
+		job = newJobTrack(pw, "Check task inputs", ctx)
 
 		// Concat IDs, to pass to the remoter server
 		var tasks string
@@ -179,21 +179,18 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			// Reset this to avoid creation error, where remote server is not expecting this
 			createTime.WorkTypeRemote = ""
 
-			// Run each as a goroutine
-			go func() {
-				job := newJobTrack(pw, fmt.Sprintf(
-					"Creating time task: %s | %s | %s | %.2f hour(s) |",
-					createTime.Date,
-					createTime.Description,
-					createTime.WorkType,
-					createTimeHours,
-				))
-				if err := client.CreateTime(createTime); err == nil {
-					setJobSuccess(job, "Created")
-				} else {
-					setJobError(job, err)
-				}
-			}()
+			job := newJobTrack(pw, fmt.Sprintf(
+				"Creating time task: %s | %s | %s | %.2f hour(s) |",
+				createTime.Date,
+				createTime.Description,
+				createTime.WorkType,
+				createTimeHours,
+			), ctx)
+			if err := client.CreateTime(createTime); err == nil {
+				setJobSuccess(job, "Created")
+			} else {
+				setJobError(job, err)
+			}
 		}
 	}
 

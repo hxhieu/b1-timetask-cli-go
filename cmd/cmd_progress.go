@@ -7,7 +7,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-func newJobTrack(pw progress.Writer, title string) *progress.Tracker {
+func newJobTrack(pw progress.Writer, title string, ctx CLIContext) *progress.Tracker {
+	if ctx.Debug {
+		title = fmt.Sprintf("%s %s", color.YellowString("[DEBUG ONLY]"), title)
+	}
 	job := progress.Tracker{
 		Message: title,
 		Units: progress.Units{

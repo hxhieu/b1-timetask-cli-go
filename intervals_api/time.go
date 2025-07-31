@@ -33,6 +33,11 @@ type GetTimeResponse struct {
 }
 
 func (c *Client) CreateTime(createTime *TimeEntry) error {
+	if c.debug {
+		time.Sleep(common.RandomDelay(time.Millisecond*100, time.Millisecond*1000))
+		return nil
+	}
+
 	if createTime == nil {
 		return errors.New("cannot create nil time task")
 	}

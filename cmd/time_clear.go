@@ -23,7 +23,7 @@ func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEn
 	go pw.Render()
 
 	// Fetch time entries job
-	job := newJobTrack(pw, "Fetch week time tasks")
+	job := newJobTrack(pw, "Fetch week time tasks", ctx)
 
 	if token, err := common.GetUserToken(); err == nil {
 
@@ -72,7 +72,7 @@ func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client
 				t.Description,
 				t.WorkTypeRemote,
 				t.Time,
-			))
+			), ctx)
 			if err := client.DeleteTimeEntry(t.Id); err == nil {
 				setJobSuccess(job, "Deleted")
 			} else {

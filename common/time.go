@@ -1,6 +1,9 @@
 package common
 
-import "time"
+import (
+	"math/rand/v2"
+	"time"
+)
 
 // Week starts
 func GetWeekStart(date time.Time) time.Time {
@@ -24,4 +27,12 @@ func GetWeekRange(date time.Time, weekOffset int) []time.Time {
 
 func DateToString(date time.Time) string {
 	return date.Format("2006-01-02")
+}
+
+func RandomDelay(min, max time.Duration) time.Duration {
+	if max <= min {
+		return min
+	}
+	diff := max - min
+	return min + time.Duration(rand.Int64N(int64(diff)+1))
 }
