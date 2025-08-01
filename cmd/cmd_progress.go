@@ -49,6 +49,6 @@ func setJobError(job *progress.Tracker, err error) {
 }
 
 func setJobSuccess(job *progress.Tracker, message string) {
-	job.UpdateMessage(fmt.Sprintf("%s -> %s", job.Message, color.HiGreenString(message)))
+	job.UpdateMessage(fmt.Sprintf("%s %s", job.Message, color.HiGreenString(message)))
 	job.MarkAsDone()
 }

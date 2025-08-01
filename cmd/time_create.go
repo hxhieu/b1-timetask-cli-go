@@ -154,6 +154,9 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 		fmt.Scanln()
 	}
 
+	// Calculate max text length for columns padding
+	maxTitleLength, maxWorkTypeLength := common.CalcMaxFieldsLen(prepResult.tasks)
+
 	for i, d := range weekDays {
 		for _, input := range prepResult.tasks {
 			if input == nil {
@@ -172,7 +175,7 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 				PersonId: prepResult.userId,
 				Date:     common.DateToString(d),
 				// Need a string for remote payload
-				Time: fmt.Sprintf("%f", createTimeHours),
+				Time: fmt.Sprintf("%5.2f", createTimeHours),
 			}
 
 			createTime.LoadFromInput(input)
@@ -180,11 +183,8 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			createTime.WorkTypeRemote = ""
 
 			job := newJobTrack(pw, fmt.Sprintf(
-				"Creating time task: %s | %s | %s | %.2f hour(s) |",
-				createTime.Date,
-				createTime.Description,
-				createTime.WorkType,
-				createTimeHours,
+				"Creating: %s",
+				createTime.PaddedTitle(maxTitleLength, maxWorkTypeLength),
 			), ctx)
 			if err := client.CreateTime(createTime); err == nil {
 				setJobSuccess(job, "Created")

@@ -173,3 +173,26 @@ func (i *TimeTaskInput) Hours() []float32 {
 func (i *TimeTaskInput) TotalHours() float32 {
 	return i.Mon + i.Tue + i.Wed + i.Thu + i.Fri + i.Sat + i.Sun
 }
+
+func CalcMaxFieldsLen(tasks []*TimeTaskInput) (int, int) {
+	maxTitleLength := 0
+	maxWorkTypeLength := 0
+	for _, input := range tasks {
+		if input == nil {
+			continue
+		}
+
+		if len(input.Title) > maxTitleLength {
+			maxTitleLength = len(input.Desc)
+		}
+
+		if len(input.Desc) > maxTitleLength {
+			maxTitleLength = len(input.Desc)
+		}
+
+		if len(input.WorkType) > maxWorkTypeLength {
+			maxWorkTypeLength = len(input.WorkType)
+		}
+	}
+	return maxTitleLength, maxWorkTypeLength
+}

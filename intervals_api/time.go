@@ -83,6 +83,10 @@ func (c *Client) GetTimeEntries(start time.Time, end time.Time) (*[]TimeEntry, e
 }
 
 func (c *Client) DeleteTimeEntry(id string) error {
+	if c.debug {
+		time.Sleep(common.RandomDelay(time.Millisecond*100, time.Millisecond*1000))
+		return nil
+	}
 
 	err := c.delete("time/" + id)
 	if err != nil {
@@ -106,6 +110,9 @@ func (t *TimeEntry) LoadFromInput(input *common.TimeTaskInput) error {
 		return err
 	}
 	err = json.Unmarshal(src, t)
+	if err != nil {
+		return err
+	}
 
 	// Description, default to task title
 	if len(t.Description) == 0 {
@@ -115,4 +122,16 @@ func (t *TimeEntry) LoadFromInput(input *common.TimeTaskInput) error {
 	t.WorkType = input.WorkType
 
 	return nil
+}
+
+func (i *TimeEntry) PaddedTitle(maxTitleLen int, maxWorkTypeLen int) string {
+	return fmt.Sprintf(
+		"%s | %-*s | %-*s | %s |",
+		i.Date,
+		maxTitleLen,
+		i.Description,
+		maxWorkTypeLen,
+		i.WorkType,
+		i.Time,
+	)
 }
