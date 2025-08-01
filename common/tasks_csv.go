@@ -94,12 +94,8 @@ func (p *TaskCsvParser) DebugPrint() {
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{
 		"Task",
-		"ID",
 		"Desc",
-		"Title",
 		"Billable",
-		"WorkType ID",
-		"Project ID",
 		"WorkType",
 		"Mon",
 		"Tue",
@@ -118,12 +114,8 @@ func (p *TaskCsvParser) DebugPrint() {
 		} else {
 			t.AppendRow([]interface{}{
 				task.Task,
-				task.Id,
 				task.Desc,
-				task.Title,
 				task.Billable,
-				task.WorkTypeId,
-				task.ProjectId,
 				task.WorkType,
 				task.Mon,
 				task.Tue,
@@ -145,10 +137,6 @@ func (p *TaskCsvParser) DebugPrint() {
 		t.AppendSeparator()
 	}
 	t.AppendRow([]interface{}{
-		"",
-		"",
-		"",
-		"",
 		"",
 		"",
 		"",

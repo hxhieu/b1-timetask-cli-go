@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -125,13 +126,41 @@ func (t *TimeEntry) LoadFromInput(input *common.TimeTaskInput) error {
 }
 
 func (i *TimeEntry) PaddedTitle(maxTitleLen int, maxWorkTypeLen int) string {
+	// Duration from remote won't be padded, so we need to parse it
+	duration, _ := strconv.ParseFloat(i.Time, 32)
+
+	// Work type name from remote, or local input
+	workTypeName := i.WorkType
+	if len(workTypeName) == 0 {
+		workTypeName = i.WorkTypeRemote
+	}
+
 	return fmt.Sprintf(
-		"%s | %-*s | %-*s | %s |",
+		"| %s | %-*s | %-*s | %5.2f |",
 		i.Date,
 		maxTitleLen,
 		i.Description,
 		maxWorkTypeLen,
-		i.WorkType,
-		i.Time,
+		workTypeName,
+		duration,
 	)
+}
+
+func CalcMaxFieldsLen(tasks *[]TimeEntry) (int, int) {
+	maxTitleLength := 0
+	maxWorkTypeLength := 0
+	for _, input := range *tasks {
+		if len(input.Description) > maxTitleLength {
+			maxTitleLength = len(input.Description)
+		}
+
+		if len(input.WorkType) > maxWorkTypeLength {
+			maxWorkTypeLength = len(input.WorkType)
+		}
+
+		if len(input.WorkTypeRemote) > maxWorkTypeLength {
+			maxWorkTypeLength = len(input.WorkTypeRemote)
+		}
+	}
+	return maxTitleLength, maxWorkTypeLength
 }

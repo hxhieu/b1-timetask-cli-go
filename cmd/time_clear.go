@@ -63,22 +63,19 @@ func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client
 
 	go pw.Render()
 
+	// Calculate max text length for columns padding
+	maxTitleLength, maxWorkTypeLength := intervals_api.CalcMaxFieldsLen(tasks)
+
 	for _, t := range *tasks {
-		// Run each as a goroutine
-		go func() {
-			job := newJobTrack(pw, fmt.Sprintf(
-				"Deleting time task: %s | %s | %s | %s hour(s) |",
-				t.Date,
-				t.Description,
-				t.WorkTypeRemote,
-				t.Time,
-			), ctx)
-			if err := client.DeleteTimeEntry(t.Id); err == nil {
-				setJobSuccess(job, "Deleted")
-			} else {
-				setJobError(job, err)
-			}
-		}()
+		job := newJobTrack(pw, fmt.Sprintf(
+			"Deleting %s",
+			t.PaddedTitle(maxTitleLength, maxWorkTypeLength),
+		), ctx)
+		if err := client.DeleteTimeEntry(t.Id); err == nil {
+			setJobSuccess(job, "Deleted")
+		} else {
+			setJobError(job, err)
+		}
 	}
 
 	// Render all jobs, until all done

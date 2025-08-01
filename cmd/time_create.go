@@ -175,7 +175,7 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 				PersonId: prepResult.userId,
 				Date:     common.DateToString(d),
 				// Need a string for remote payload
-				Time: fmt.Sprintf("%5.2f", createTimeHours),
+				Time: fmt.Sprintf("%f", createTimeHours),
 			}
 
 			createTime.LoadFromInput(input)
@@ -183,7 +183,7 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			createTime.WorkTypeRemote = ""
 
 			job := newJobTrack(pw, fmt.Sprintf(
-				"Creating: %s",
+				"Creating %s",
 				createTime.PaddedTitle(maxTitleLength, maxWorkTypeLength),
 			), ctx)
 			if err := client.CreateTime(createTime); err == nil {
