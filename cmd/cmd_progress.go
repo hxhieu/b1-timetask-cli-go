@@ -44,7 +44,7 @@ func setDefaultProgress(pw *progress.Writer) {
 
 // Also mark tracker as error
 func setJobError(job *progress.Tracker, err error) {
-	job.UpdateMessage(fmt.Sprintf("%s -> %s", job.Message, color.RedString(err.Error())))
+	job.UpdateMessage(fmt.Sprintf("%s %s", job.Message, color.RedString(err.Error())))
 	job.MarkAsErrored()
 }
 

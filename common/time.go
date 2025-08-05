@@ -6,7 +6,7 @@ import (
 )
 
 // Week starts
-func GetWeekStart(date time.Time) time.Time {
+func getWeekStart(date time.Time) time.Time {
 	startAt := time.Monday
 	offset := (int(startAt) - int(date.Weekday()) - 7) % 7
 	result := date.Add(time.Duration(offset*24) * time.Hour)
@@ -16,11 +16,17 @@ func GetWeekStart(date time.Time) time.Time {
 // From `date` as start of week to next 7 days
 func GetWeekRange(date time.Time, weekOffset int) []time.Time {
 	// Add week offset
-	actualDate := date.Add(time.Hour * 24 * 7 * time.Duration(weekOffset))
+	actualDate := date.AddDate(0, 0, 7*weekOffset)
 	result := make([]time.Time, 0)
-	weekStart := GetWeekStart(actualDate)
+	weekStart := getWeekStart(actualDate)
 	for i := range 7 {
-		result = append(result, weekStart.AddDate(0, 0, i))
+		dateTime := weekStart.AddDate(0, 0, i)
+		// Convert to local date at start of day
+		localDate := time.Date(
+			dateTime.Year(), dateTime.Month(), dateTime.Day(),
+			0, 0, 0, 0, dateTime.Location(),
+		)
+		result = append(result, localDate)
 	}
 	return result
 }
