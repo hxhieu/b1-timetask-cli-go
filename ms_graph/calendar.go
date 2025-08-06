@@ -7,6 +7,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
+	"github.com/hxhieu/b1-timetask-cli-go/debug"
+	"github.com/jedib0t/go-pretty/v6/progress"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/microsoftgraph/msgraph-sdk-go/users"
 
@@ -16,16 +18,25 @@ import (
 type MsGraphClient struct {
 	debug         bool
 	useDeviceCode bool
+	progress      *progress.Writer
 }
 
-func NewMsGraphClient(debug bool, useDeviceCode bool) *MsGraphClient {
+func NewMsGraphClient(debug bool, useDeviceCode bool, progress *progress.Writer) *MsGraphClient {
 	return &MsGraphClient{
 		debug:         debug,
 		useDeviceCode: useDeviceCode,
+		progress:      progress,
 	}
 }
 
 func (c *MsGraphClient) GetMyCalendarEvents(weekOffset int) (*[]common.OutLookCalendarEvent, error) {
+	debugFile := ".debug_calendar-events.json"
+	if c.debug {
+		if debugData := debug.LoadDataFile[[]common.OutLookCalendarEvent](debugFile); debugData != nil {
+			return debugData, nil
+		}
+	}
+
 	weekDays := common.GetWeekRange(time.Now(), weekOffset)
 	monday := weekDays[0]
 
@@ -70,6 +81,8 @@ func (c *MsGraphClient) GetMyCalendarEvents(weekOffset int) (*[]common.OutLookCa
 		return nil, fmt.Errorf("unsupported credential type: %T", cred)
 	}
 
+	job := newJobTrack(pw, "Check user", ctx.Debug)
+
 	result, err := client.Me().Calendar().Events().Get(context.Background(), &users.ItemCalendarEventsRequestBuilderGetRequestConfiguration{
 		QueryParameters: &users.ItemCalendarEventsRequestBuilderGetQueryParameters{
 			Select: []string{"categories", "subject", "start", "end"},
@@ -94,6 +107,10 @@ func (c *MsGraphClient) GetMyCalendarEvents(weekOffset int) (*[]common.OutLookCa
 		calendarEvents = append(calendarEvents, calendarEvent)
 	}
 
+	if c.debug {
+		debug.WriteDataFile(debugFile, calendarEvents)
+	}
+
 	return &calendarEvents, nil
 }
 
@@ -112,9 +129,10 @@ func fromRemote(event models.Eventable) common.OutLookCalendarEvent {
 	// Get start time
 	if start := event.GetStart(); start != nil {
 		if startTime := start.GetDateTime(); startTime != nil {
-			// Parse the time string to time.Time if needed
-			if parsedTime, err := time.Parse(time.RFC3339, *startTime); err == nil {
+			if parsedTime, err := common.ParseGraphDateTime(*startTime); err == nil {
 				calendarEvent.Start.DateTime = parsedTime
+			} else {
+				fmt.Printf("Error parsing start time '%s': %v\n", *startTime, err)
 			}
 		}
 	}
@@ -122,9 +140,10 @@ func fromRemote(event models.Eventable) common.OutLookCalendarEvent {
 	// Get end time
 	if end := event.GetEnd(); end != nil {
 		if endTime := end.GetDateTime(); endTime != nil {
-			// Parse the time string to time.Time if needed
-			if parsedTime, err := time.Parse(time.RFC3339, *endTime); err == nil {
+			if parsedTime, err := common.ParseGraphDateTime(*endTime); err == nil {
 				calendarEvent.End.DateTime = parsedTime
+			} else {
+				fmt.Printf("Error parsing end time '%s': %v\n", *endTime, err)
 			}
 		}
 	}

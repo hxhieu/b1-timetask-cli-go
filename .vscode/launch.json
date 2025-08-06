@@ -32,7 +32,13 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}",
-      "args": ["time", "create", "-d", "-f"]
+      "args": [
+        "time",
+        "create",
+        "-d",
+        "-f",
+        "--use-device-code"
+      ]
     },
     {
       "name": "Debug - `time clear`",
@@ -40,7 +46,12 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}",
-      "args": ["time", "clear", "-d", "-f"]
+      "args": [
+        "time",
+        "clear",
+        "-d",
+        "-f"
+      ]
     }
   ]
 }

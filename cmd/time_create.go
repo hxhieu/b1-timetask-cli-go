@@ -35,7 +35,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 	go pw.Render()
 
 	// Check and fetch user job
-	job := newJobTrack(pw, "Check user", ctx)
+	job := newJobTrack(pw, "Check user", ctx.Debug)
 
 	if token, err := common.GetUserToken(); err == nil {
 		// API client
@@ -53,8 +53,6 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 	}
 
 	if !job.IsErrored() {
-		job = newJobTrack(pw, "Prepare task inputs", ctx)
-
 		switch *inputType {
 		case "csv":
 			// Parse the CSV file
@@ -62,27 +60,26 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 			var err error = nil
 			tasks, err = csvParser.GetTasks()
 			if err != nil {
-				setJobError(job, err)
 				return nil, nil, err
 			}
 		case "calendar":
-			msGraphClient := ms_graph.NewMsGraphClient(ctx.Debug, useDeviceCode)
+			msGraphClient := ms_graph.NewMsGraphClient(ctx.Debug, useDeviceCode, &pw)
 			// Get raw events from calendar
 			events, err := msGraphClient.GetMyCalendarEvents(weekOffset)
 			if err != nil {
-				setJobError(job, err)
 				return nil, nil, err
 			}
 			// Parse the events to tasks
 			eventsParser := common.NewCalendarTaskParser(subjectTemplate)
 			tasks, err = eventsParser.ParseEvents(events)
 			if err != nil {
-				setJobError(job, err)
 				return nil, nil, err
 			}
 		default:
 			return nil, nil, fmt.Errorf("unknown input type: %s", *inputType)
 		}
+
+		job = newJobTrack(pw, "Prepare task inputs", ctx.Debug)
 
 		// Concat IDs, to pass to the remoter server
 		var taskValues string
@@ -209,7 +206,7 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			job := newJobTrack(pw, fmt.Sprintf(
 				"Creating %s",
 				createTime.PaddedTitle(maxTitleLength, maxWorkTypeLength),
-			), ctx)
+			), ctx.Debug)
 			if err := client.CreateTime(createTime); err == nil {
 				setJobSuccess(job, "Created")
 			} else {

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"time"
 )
@@ -41,4 +42,23 @@ func RandomDelay(min, max time.Duration) time.Duration {
 	}
 	diff := max - min
 	return min + time.Duration(rand.Int64N(int64(diff)+1))
+}
+
+// ParseGraphDateTime parses a datetime string from Microsoft Graph API using multiple possible formats
+func ParseGraphDateTime(dateTimeStr string) (time.Time, error) {
+	// Try multiple time formats that Microsoft Graph might use
+	timeFormats := []string{
+		time.RFC3339,                  // "2006-01-02T15:04:05Z07:00"
+		"2006-01-02T15:04:05.0000000", // Microsoft Graph format without timezone
+		"2006-01-02T15:04:05",         // Basic ISO format
+		time.RFC3339Nano,              // With nanoseconds
+	}
+
+	for _, format := range timeFormats {
+		if parsedTime, err := time.Parse(format, dateTimeStr); err == nil {
+			return parsedTime, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse datetime string: %s", dateTimeStr)
 }

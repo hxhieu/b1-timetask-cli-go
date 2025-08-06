@@ -1,4 +1,4 @@
-package cmd
+package common
 
 import (
 	"fmt"
@@ -7,8 +7,8 @@ import (
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-func newJobTrack(pw progress.Writer, title string, ctx CLIContext) *progress.Tracker {
-	if ctx.Debug {
+func NewJobTrack(pw progress.Writer, title string, debug bool) *progress.Tracker {
+	if debug {
 		title = fmt.Sprintf("%s %s", color.YellowString("[DEBUG ONLY]"), title)
 	}
 	job := progress.Tracker{
