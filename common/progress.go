@@ -2,28 +2,24 @@ package common
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
-func NewJobTrack(pw progress.Writer, title string, debug bool) *progress.Tracker {
-	if debug {
-		title = fmt.Sprintf("%s %s", color.YellowString("[DEBUG ONLY]"), title)
-	}
-	job := progress.Tracker{
-		Message: title,
-		Units: progress.Units{
-			Notation:         " jobs",
-			NotationPosition: progress.UnitsNotationPositionAfter,
-		},
-		DeferStart: false,
-	}
-	pw.AppendTracker(&job)
-	return &job
+// ProgressTracker is a utility to track progress of jobs with a visual representation.
+type ProgressTracker struct {
+	pw    progress.Writer
+	debug bool
 }
 
-func setDefaultProgress(pw *progress.Writer) {
+// ProgressTrack represents a single job track in the progress tracker.
+type ProgressTrack struct {
+	track *progress.Tracker
+}
+
+func setDefaultStyles(pw *progress.Writer) {
 	if pw == nil {
 		return
 	}
@@ -42,13 +38,63 @@ func setDefaultProgress(pw *progress.Writer) {
 	// p.Style().Visibility.Pinned = false
 }
 
-// Also mark tracker as error
-func setJobError(job *progress.Tracker, err error) {
-	job.UpdateMessage(fmt.Sprintf("%s %s", job.Message, color.RedString(err.Error())))
-	job.MarkAsErrored()
+// NewProgressTracker creates a new ProgressTracker instance.
+func NewProgressTracker(debug bool) *ProgressTracker {
+	pw := progress.NewWriter()
+	setDefaultStyles(&pw)
+	return &ProgressTracker{
+		pw:    pw,
+		debug: debug,
+	}
 }
 
-func setJobSuccess(job *progress.Tracker, message string) {
-	job.UpdateMessage(fmt.Sprintf("%s %s", job.Message, color.HiGreenString(message)))
-	job.MarkAsDone()
+// Start initializes the progress tracker and starts rendering.
+func (p *ProgressTracker) Start() {
+	go p.pw.Render()
+}
+
+// AddNewTrack creates a new track for a job with the given title.
+func (p *ProgressTracker) AddNewTrack(title string) *ProgressTrack {
+	if p.debug {
+		title = fmt.Sprintf("%s %s", color.YellowString("[DEBUG ONLY]"), title)
+	}
+
+	job := progress.Tracker{
+		Message: title,
+		Units: progress.Units{
+			Notation:         " jobs",
+			NotationPosition: progress.UnitsNotationPositionAfter,
+		},
+		DeferStart: false,
+	}
+
+	p.pw.AppendTracker(&job)
+
+	return &ProgressTrack{
+		track: &job,
+	}
+}
+
+// SetSuccess updates the track message to indicate success and marks it as done.
+func (t *ProgressTrack) SetSuccess(message string) {
+	t.track.UpdateMessage(fmt.Sprintf("%s %s", t.track.Message, color.HiGreenString(message)))
+	t.track.MarkAsDone()
+}
+
+// SetError updates the track message to indicate an error and marks it as errored.
+func (t *ProgressTrack) SetError(err error) {
+	t.track.UpdateMessage(fmt.Sprintf("%s %s", t.track.Message, color.RedString(err.Error())))
+	t.track.MarkAsErrored()
+}
+
+func (t *ProgressTrack) IsErrored() bool {
+	return t.track.IsErrored()
+}
+
+// RenderUntilAllDone waits for all jobs to be done before returning.
+func (p *ProgressTracker) RenderUntilAllDone() {
+	// Render all jobs, until all done
+	time.Sleep(time.Millisecond * 100)
+	for p.pw.IsRenderInProgress() {
+	}
 }

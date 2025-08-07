@@ -10,7 +10,6 @@ import (
 	"github.com/hxhieu/b1-timetask-cli-go/console"
 	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
 	"github.com/hxhieu/b1-timetask-cli-go/ms_graph"
-	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
 type createTimePrepResult struct {
@@ -29,13 +28,11 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 	var tasks []*common.TimeTaskInput
 
 	// instantiate a Progress Writer and set up the options
-	pw := progress.NewWriter()
-	setDefaultProgress(&pw)
-
-	go pw.Render()
+	progress := common.NewProgressTracker(ctx.Debug)
+	progress.Start()
 
 	// Check and fetch user job
-	job := newJobTrack(pw, "Check user", ctx.Debug)
+	job := progress.AddNewTrack("Check user")
 
 	if token, err := common.GetUserToken(); err == nil {
 		// API client
@@ -44,12 +41,12 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 		// Fetch the user
 		if me, err := timeIntervalClient.Me(); err == nil {
 			result.userId = me.Id
-			setJobSuccess(job, fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
+			job.SetSuccess(fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
 		} else {
-			setJobError(job, err)
+			job.SetError(err)
 		}
 	} else {
-		setJobError(job, err)
+		job.SetError(err)
 	}
 
 	if !job.IsErrored() {
@@ -63,7 +60,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 				return nil, nil, err
 			}
 		case "calendar":
-			msGraphClient := ms_graph.NewMsGraphClient(ctx.Debug, useDeviceCode, &pw)
+			msGraphClient := ms_graph.NewMsGraphClient(ctx.Debug, useDeviceCode)
 			// Get raw events from calendar
 			events, err := msGraphClient.GetMyCalendarEvents(weekOffset)
 			if err != nil {
@@ -79,7 +76,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 			return nil, nil, fmt.Errorf("unknown input type: %s", *inputType)
 		}
 
-		job = newJobTrack(pw, "Prepare task inputs", ctx.Debug)
+		job = progress.AddNewTrack("Prepare task inputs")
 
 		// Concat IDs, to pass to the remoter server
 		var taskValues string
@@ -134,20 +131,18 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 					}
 				}
 			} else {
-				setJobError(job, err)
+				job.SetError(err)
 			}
 
 			// All done
-			setJobSuccess(job, "Found below task(s)")
+			job.SetSuccess("Found below task(s)")
 		} else {
-			setJobError(job, err)
+			job.SetError(err)
 		}
 	}
 
 	// Render all jobs, until all done
-	time.Sleep(time.Millisecond * 100)
-	for pw.IsRenderInProgress() {
-	}
+	progress.RenderUntilAllDone()
 
 	if job.IsErrored() {
 		return nil, nil, errors.New("one or more steps throwing errors")
@@ -161,10 +156,8 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 
 func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals_api.Client, weekOffset int) error {
 	// instantiate a Progress Writer and set up the options
-	pw := progress.NewWriter()
-	setDefaultProgress(&pw)
-
-	go pw.Render()
+	progress := common.NewProgressTracker(ctx.Debug)
+	progress.Start()
 
 	weekDays := common.GetWeekRange(time.Now(), weekOffset)
 
@@ -203,22 +196,20 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			// Reset this to avoid creation error, where remote server is not expecting this
 			createTime.WorkTypeRemote = ""
 
-			job := newJobTrack(pw, fmt.Sprintf(
+			job := progress.AddNewTrack(fmt.Sprintf(
 				"Creating %s",
 				createTime.PaddedTitle(maxTitleLength, maxWorkTypeLength),
-			), ctx.Debug)
+			))
 			if err := client.CreateTime(createTime); err == nil {
-				setJobSuccess(job, "Created")
+				job.SetSuccess("Created")
 			} else {
-				setJobError(job, err)
+				job.SetError(err)
 			}
 		}
 	}
 
 	// Render all jobs, until all done
-	time.Sleep(time.Millisecond * 100)
-	for pw.IsRenderInProgress() {
-	}
+	progress.RenderUntilAllDone()
 
 	if !ctx.Force {
 		console.Header("All DONE! Press ENTER to exit.")

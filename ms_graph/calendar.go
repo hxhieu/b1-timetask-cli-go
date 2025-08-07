@@ -8,7 +8,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/debug"
-	"github.com/jedib0t/go-pretty/v6/progress"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/microsoftgraph/msgraph-sdk-go/users"
 
@@ -18,14 +17,12 @@ import (
 type MsGraphClient struct {
 	debug         bool
 	useDeviceCode bool
-	progress      *progress.Writer
 }
 
-func NewMsGraphClient(debug bool, useDeviceCode bool, progress *progress.Writer) *MsGraphClient {
+func NewMsGraphClient(debug bool, useDeviceCode bool) *MsGraphClient {
 	return &MsGraphClient{
 		debug:         debug,
 		useDeviceCode: useDeviceCode,
-		progress:      progress,
 	}
 }
 
@@ -80,8 +77,6 @@ func (c *MsGraphClient) GetMyCalendarEvents(weekOffset int) (*[]common.OutLookCa
 	} else {
 		return nil, fmt.Errorf("unsupported credential type: %T", cred)
 	}
-
-	job := newJobTrack(pw, "Check user", ctx.Debug)
 
 	result, err := client.Me().Calendar().Events().Get(context.Background(), &users.ItemCalendarEventsRequestBuilderGetRequestConfiguration{
 		QueryParameters: &users.ItemCalendarEventsRequestBuilderGetQueryParameters{
