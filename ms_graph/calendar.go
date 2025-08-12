@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/hxhieu/b1-timetask-cli-go/common"
+	"github.com/hxhieu/b1-timetask-cli-go/console"
 	"github.com/hxhieu/b1-timetask-cli-go/debug"
 	"github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/microsoftgraph/msgraph-sdk-go/users"
@@ -98,8 +99,12 @@ func (c *MsGraphClient) GetMyCalendarEvents(weekOffset int) (*[]common.OutLookCa
 		if e.GetRecurrence() != nil {
 			continue // TODO: skip recurrence events for now
 		}
-		calendarEvent := fromRemote(e)
-		calendarEvents = append(calendarEvents, calendarEvent)
+		calendarEvent, err := fromRemote(e)
+		if err != nil {
+			console.ErrorLn(fmt.Sprintf("[SKIPPED] Error parsing raw calendar event: %v", err))
+			continue
+		}
+		calendarEvents = append(calendarEvents, *calendarEvent)
 	}
 
 	if c.debug {
@@ -109,7 +114,7 @@ func (c *MsGraphClient) GetMyCalendarEvents(weekOffset int) (*[]common.OutLookCa
 	return &calendarEvents, nil
 }
 
-func fromRemote(event models.Eventable) common.OutLookCalendarEvent {
+func fromRemote(event models.Eventable) (*common.OutLookCalendarEvent, error) {
 	calendarEvent := common.OutLookCalendarEvent{}
 	// Get subject
 	if subject := event.GetSubject(); subject != nil {
@@ -127,7 +132,7 @@ func fromRemote(event models.Eventable) common.OutLookCalendarEvent {
 			if parsedTime, err := common.ParseGraphDateTime(*startTime); err == nil {
 				calendarEvent.Start.DateTime = parsedTime
 			} else {
-				fmt.Printf("Error parsing start time '%s': %v\n", *startTime, err)
+				return nil, err
 			}
 		}
 	}
@@ -138,9 +143,9 @@ func fromRemote(event models.Eventable) common.OutLookCalendarEvent {
 			if parsedTime, err := common.ParseGraphDateTime(*endTime); err == nil {
 				calendarEvent.End.DateTime = parsedTime
 			} else {
-				fmt.Printf("Error parsing end time '%s': %v\n", *endTime, err)
+				return nil, err
 			}
 		}
 	}
-	return calendarEvent
+	return &calendarEvent, nil
 }

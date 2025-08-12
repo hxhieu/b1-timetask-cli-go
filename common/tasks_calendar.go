@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,11 +12,13 @@ import (
 
 type CalendarTaskParser struct {
 	subjectTemplate *string
+	defaultWorkType *string
 }
 
-func NewCalendarTaskParser(subjectTemplate *string) *CalendarTaskParser {
+func NewCalendarTaskParser(subjectTemplate *string, defaultWorkType *string) *CalendarTaskParser {
 	return &CalendarTaskParser{
 		subjectTemplate: subjectTemplate,
+		defaultWorkType: defaultWorkType,
 	}
 }
 
@@ -25,16 +28,19 @@ func (p *CalendarTaskParser) ParseEvents(events *[]OutLookCalendarEvent) ([]*Tim
 	for _, event := range *events {
 		code, desc, err := event.fromTitle(*p.subjectTemplate)
 		if err != nil {
-			console.ErrorLn(fmt.Sprintf("SKIPPED ERR parsing subject: '%s'. %s", event.Subject, err.Error()))
+			printError(fmt.Sprintf("parsing subject: '%s'", event.Subject), err)
 			continue
 		}
-		workType, billable, err := event.fromCategory()
+		workType, billable, err := event.fromCategory(p.defaultWorkType)
 		if err != nil {
-			console.WarnLn(fmt.Sprintf("SKIPPED parsing category: '%s'", err.Error()))
+			printError("parsing category", err)
+			continue
 		}
 
-		if taskMap[code] == nil {
-			taskMap[code] = &TimeTaskInput{
+		// Group by code + worktype
+		groupingKey := code + "_" + strings.ToLower(workType)
+		if taskMap[groupingKey] == nil {
+			taskMap[groupingKey] = &TimeTaskInput{
 				Task:     code,
 				Desc:     desc,
 				WorkType: workType,
@@ -44,27 +50,31 @@ func (p *CalendarTaskParser) ParseEvents(events *[]OutLookCalendarEvent) ([]*Tim
 
 		hours, weekDay, err := event.fromTime()
 		if err != nil {
-			console.WarnLn(fmt.Sprintf("SKIPPED parsing time: '%s'", err.Error()))
+			printError("parsing time", err)
+			continue
 		}
 
 		switch weekDay {
 		case time.Sunday:
-			taskMap[code].Sun += hours
+			taskMap[groupingKey].Sun += hours
 		case time.Monday:
-			taskMap[code].Mon += hours
+			taskMap[groupingKey].Mon += hours
 		case time.Tuesday:
-			taskMap[code].Tue += hours
+			taskMap[groupingKey].Tue += hours
 		case time.Wednesday:
-			taskMap[code].Wed += hours
+			taskMap[groupingKey].Wed += hours
 		case time.Thursday:
-			taskMap[code].Thu += hours
+			taskMap[groupingKey].Thu += hours
 		case time.Friday:
-			taskMap[code].Fri += hours
+			taskMap[groupingKey].Fri += hours
 		case time.Saturday:
-			taskMap[code].Sat += hours
+			taskMap[groupingKey].Sat += hours
 		default:
-			console.WarnLn(fmt.Sprintf("SKIPPED parsing week day: '%s'", "invalid week day"))
+			printError("parsing time", errors.New("invalid week day"))
+			continue
 		}
+		console.Success("[DONE] ")
+		console.InfoLn(event.Subject)
 	}
 
 	result := []*TimeTaskInput{}
@@ -119,10 +129,41 @@ func (e *OutLookCalendarEvent) fromTitle(template string) (taskCode, taskDesc st
 	}
 }
 
-func (e *OutLookCalendarEvent) fromCategory() (workType string, billable string, err error) {
-	return "", "f", fmt.Errorf("not implemented")
+func (e *OutLookCalendarEvent) fromCategory(defaultWorkType *string) (workType string, billable string, err error) {
+	billable = "t"              // default to true
+	workType = *defaultWorkType // default work type
+
+	// Event has assigned categories
+	// then we need to parse it
+	if len(e.Categories) > 0 {
+		workTypes := make([]string, 0)
+		// For each of the event categories, find it is Nonbillable or candidate work types
+		for _, category := range e.Categories {
+			maybeWorkType := strings.TrimSpace(category)
+			if strings.ToLower(maybeWorkType) != "nonbillable" {
+				workTypes = append(workTypes, maybeWorkType)
+			} else {
+				billable = "f"
+			}
+		}
+
+		// First assigned category will be the work type
+		workType = workTypes[0]
+	}
+
+	return workType, billable, nil
 }
 
 func (e *OutLookCalendarEvent) fromTime() (hours float32, weekDay time.Weekday, err error) {
-	return 0, time.Sunday, fmt.Errorf("not implemented")
+	diff := e.End.DateTime.Sub(e.Start.DateTime)
+	hours = float32(diff.Hours())
+	startLocal := e.Start.DateTime.In(time.Local)
+	return hours, startLocal.Weekday(), nil
+}
+
+func printError(msg string, err error) {
+	if err == nil {
+		return
+	}
+	console.ErrorLn(fmt.Sprintf("[ERRO] %s, skipped event. %v", msg, err))
 }

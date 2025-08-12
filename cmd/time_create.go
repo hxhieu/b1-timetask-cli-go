@@ -17,7 +17,15 @@ type createTimePrepResult struct {
 	tasks  []*common.TimeTaskInput
 }
 
-func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subjectTemplate *string, inputType *string, useDeviceCode bool) (*createTimePrepResult, *intervals_api.Client, error) {
+func createTimePrepSteps(
+	ctx CLIContext,
+	inputFile *string,
+	weekOffset int,
+	subjectTemplate *string,
+	inputType *string,
+	useDeviceCode bool,
+	defaultWorkType *string,
+) (*createTimePrepResult, *intervals_api.Client, error) {
 	if !(*inputType == "csv" || *inputType == "calendar") {
 		return nil, nil, fmt.Errorf("invalid input type: %s, expected 'csv' or 'calendar'", *inputType)
 	}
@@ -67,7 +75,7 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 				return nil, nil, err
 			}
 			// Parse the events to tasks
-			eventsParser := common.NewCalendarTaskParser(subjectTemplate)
+			eventsParser := common.NewCalendarTaskParser(subjectTemplate, defaultWorkType)
 			tasks, err = eventsParser.ParseEvents(events)
 			if err != nil {
 				return nil, nil, err
@@ -151,6 +159,8 @@ func createTimePrepSteps(ctx CLIContext, inputFile *string, weekOffset int, subj
 	// Print the tasks table
 	common.PrintTimeTasks(tasks)
 
+	result.tasks = tasks
+
 	return result, timeIntervalClient, nil
 }
 
@@ -228,6 +238,7 @@ func (c *timeCreateCmd) Run(ctx CLIContext) error {
 		c.CalendarSubjectTemplate,
 		c.InputType,
 		c.UseDeviceCode,
+		c.CalendarDefaultType,
 	)
 	if err != nil {
 		return err
