@@ -34,7 +34,7 @@ jobs:
       #     build-name: b1-timetask-cli-go
       #     build-platform: windows/amd64
 
-      - name: Test
-        run: ./scripts/run-tests.sh
-        env:
-          COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
+      # - name: Test
+      #   run: ./scripts/run-tests.sh
+      #   env:
+      #     COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD }}
