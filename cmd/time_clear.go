@@ -7,7 +7,6 @@ import (
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/console"
 	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
-	"github.com/jedib0t/go-pretty/v6/progress"
 )
 
 func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
@@ -17,13 +16,11 @@ func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEn
 	weekDays := common.GetWeekRange(time.Now(), weekOffset)
 
 	// instantiate a Progress Writer and set up the options
-	pw := progress.NewWriter()
-	setDefaultProgress(&pw)
-
-	go pw.Render()
+	progress := common.NewProgressTracker(ctx.Debug)
+	progress.Start()
 
 	// Fetch time entries job
-	job := newJobTrack(pw, "Fetch week time tasks")
+	job := progress.AddNewTrack("Fetch week time tasks")
 
 	if token, err := common.GetUserToken(); err == nil {
 
@@ -33,18 +30,16 @@ func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEn
 		// Fetch tasks
 		if tasks, err := client.GetTimeEntries(weekDays[0], weekDays[len(weekDays)-1]); err == nil {
 			result = tasks
-			setJobSuccess(job, fmt.Sprintf("Found %d task(s)", len(*tasks)))
+			job.SetSuccess(fmt.Sprintf("Found %d task(s)", len(*tasks)))
 		} else {
-			setJobError(job, err)
+			job.SetError(err)
 		}
 	} else {
-		setJobError(job, err)
+		job.SetError(err)
 	}
 
 	// Render all jobs, until all done
-	time.Sleep(time.Millisecond * 100)
-	for pw.IsRenderInProgress() {
-	}
+	progress.RenderUntilAllDone()
 
 	console.PrintWeekRange(common.DateToString(weekDays[0]), common.DateToString(weekDays[6]), weekOffset)
 
@@ -58,33 +53,26 @@ func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEn
 
 func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client *intervals_api.Client) error {
 	// instantiate a Progress Writer and set up the options
-	pw := progress.NewWriter()
-	setDefaultProgress(&pw)
+	progress := common.NewProgressTracker(ctx.Debug)
+	progress.Start()
 
-	go pw.Render()
+	// Calculate max text length for columns padding
+	maxTitleLength, maxWorkTypeLength := intervals_api.CalcMaxFieldsLen(tasks)
 
 	for _, t := range *tasks {
-		// Run each as a goroutine
-		go func() {
-			job := newJobTrack(pw, fmt.Sprintf(
-				"Deleting time task: %s | %s | %s | %s hour(s) |",
-				t.Date,
-				t.Description,
-				t.WorkTypeRemote,
-				t.Time,
-			))
-			if err := client.DeleteTimeEntry(t.Id); err == nil {
-				setJobSuccess(job, "Deleted")
-			} else {
-				setJobError(job, err)
-			}
-		}()
+		job := progress.AddNewTrack(fmt.Sprintf(
+			"Deleting %s",
+			t.PaddedTitle(maxTitleLength, maxWorkTypeLength),
+		))
+		if err := client.DeleteTimeEntry(t.Id); err == nil {
+			job.SetSuccess("Deleted")
+		} else {
+			job.SetError(err)
+		}
 	}
 
 	// Render all jobs, until all done
-	time.Sleep(time.Millisecond * 100)
-	for pw.IsRenderInProgress() {
-	}
+	progress.RenderUntilAllDone()
 
 	if !ctx.Force {
 		console.Header("All DONE! Press ENTER to exit.")

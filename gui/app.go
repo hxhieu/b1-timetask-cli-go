@@ -27,13 +27,7 @@ func (a *App) Startup(ctx context.Context) {
 }
 
 func (a *App) FetchTaskInputs() ([]*common.TimeTaskInput, error) {
-	if a.taskParser == nil {
-		parse, err := common.NewTaskParser(nil)
-		if err != nil {
-			return nil, err
-		}
-		a.taskParser = parse
-	}
+	// TODO: csv or calendar here
 	return a.taskParser.Tasks, nil
 }
 

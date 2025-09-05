@@ -16,7 +16,7 @@ func ErrorLn(err string) {
 }
 
 func Success(msg string) {
-	c := color.New(color.FgHiGreen).Add(color.BgWhite).Add(color.Bold)
+	c := color.New(color.FgHiGreen).Add(color.Bold)
 	fmt.Print(c.Sprint(msg))
 }
 

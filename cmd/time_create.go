@@ -9,7 +9,7 @@ import (
 	"github.com/hxhieu/b1-timetask-cli-go/common"
 	"github.com/hxhieu/b1-timetask-cli-go/console"
 	"github.com/hxhieu/b1-timetask-cli-go/intervals_api"
-	"github.com/jedib0t/go-pretty/v6/progress"
+	"github.com/hxhieu/b1-timetask-cli-go/ms_graph"
 )
 
 type createTimePrepResult struct {
@@ -17,133 +17,157 @@ type createTimePrepResult struct {
 	tasks  []*common.TimeTaskInput
 }
 
-func createTimePrepSteps(ctx CLIContext, inputFile *string) (*createTimePrepResult, *intervals_api.Client, error) {
-	// Shared vars between steps
-	result := &createTimePrepResult{}
-	var client *intervals_api.Client
-	var taskParser *common.TaskCsvParser
-
-	// instantiate a Progress Writer and set up the options
-	pw := progress.NewWriter()
-	setDefaultProgress(&pw)
-
-	go pw.Render()
-
-	// Check and fetch user job
-	job := newJobTrack(pw, "Check user")
-
-	if token, err := common.GetUserToken(); err == nil {
-
-		// API client
-		client = intervals_api.New(token, ctx.Debug)
-
-		// Fetch the user
-		if me, err := client.Me(); err == nil {
-			result.userId = me.Id
-			setJobSuccess(job, fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
-		} else {
-			setJobError(job, err)
-		}
-	} else {
-		setJobError(job, err)
+func createTimePrepSteps(
+	ctx CLIContext,
+	inputFile *string,
+	weekOffset int,
+	subjectTemplate *string,
+	inputType *string,
+	useDeviceCode bool,
+	defaultWorkType *string,
+) (*createTimePrepResult, *intervals_api.Client, error) {
+	if !(*inputType == "csv" || *inputType == "calendar") {
+		return nil, nil, fmt.Errorf("invalid input type: %s, expected 'csv' or 'calendar'", *inputType)
 	}
 
-	// Parse and fetch tasks from CSV
+	// Shared vars between steps
+	result := &createTimePrepResult{}
+	var timeIntervalClient *intervals_api.Client
+	var tasks []*common.TimeTaskInput
+
+	// instantiate a Progress Writer and set up the options
+	progress := common.NewProgressTracker(ctx.Debug)
+	progress.Start()
+
+	// Check and fetch user job
+	job := progress.AddNewTrack("Check user")
+
+	if token, err := common.GetUserToken(); err == nil {
+		// API client
+		timeIntervalClient = intervals_api.New(token, ctx.Debug)
+
+		// Fetch the user
+		if me, err := timeIntervalClient.Me(); err == nil {
+			result.userId = me.Id
+			job.SetSuccess(fmt.Sprintf("Found user: %s %s <%s>", me.FirstName, me.LastName, me.Email))
+		} else {
+			job.SetError(err)
+		}
+	} else {
+		job.SetError(err)
+	}
+
 	if !job.IsErrored() {
-		job = newJobTrack(pw, "Check task inputs")
+		switch *inputType {
+		case "csv":
+			// Parse the CSV file
+			csvParser := common.NewCsvTaskParser(inputFile)
+			var err error = nil
+			tasks, err = csvParser.GetTasks()
+			if err != nil {
+				return nil, nil, err
+			}
+		case "calendar":
+			msGraphClient := ms_graph.NewMsGraphClient(ctx.Debug, useDeviceCode)
+			// Get raw events from calendar
+			events, err := msGraphClient.GetMyCalendarEvents(weekOffset)
+			if err != nil {
+				return nil, nil, err
+			}
+			// Parse the events to tasks
+			eventsParser := common.NewCalendarTaskParser(subjectTemplate, defaultWorkType)
+			tasks, err = eventsParser.ParseEvents(events)
+			if err != nil {
+				return nil, nil, err
+			}
+		default:
+			return nil, nil, fmt.Errorf("unknown input type: %s", *inputType)
+		}
+
+		job = progress.AddNewTrack("Prepare task inputs")
 
 		// Concat IDs, to pass to the remoter server
-		var tasks string
-		var projects string
+		var taskValues string
+		var projectValues string
+		for _, t := range tasks {
+			if t != nil {
+				taskValues += t.Task + ","
+			}
+		}
+		taskValues = strings.TrimSuffix(taskValues, ",")
 
-		if parser, err := common.NewTaskParser(inputFile); err == nil {
-			for _, t := range parser.Tasks {
-				if t != nil {
-					tasks += t.Task + ","
+		// Fetch needed details from remote
+		if remoteTasks, err := timeIntervalClient.FetchTasks(taskValues); err == nil {
+			// TODO: Optimise this? nested loops here
+			for _, remoteTask := range *remoteTasks {
+				// Also build the project IDs list
+				projectValues += remoteTask.ProjectId + ","
+				for _, localTask := range tasks {
+					if localTask != nil && localTask.Task == remoteTask.LocalId {
+						localTask.ProjectId = remoteTask.ProjectId
+						localTask.Id = remoteTask.Id
+						localTask.Title = remoteTask.Title
+						// Truncate long title
+						if len(localTask.Title) > 50 {
+							localTask.Title = localTask.Title[:50]
+						}
+					}
 				}
 			}
-			tasks = strings.TrimSuffix(tasks, ",")
+			projectValues = strings.TrimSuffix(projectValues, ",")
 
-			// Fetch needed details from remote
-
-			if remoteTasks, err := client.FetchTasks(tasks); err == nil {
+			// Fetch work types, because they are setup per project
+			if remoteWorkTypes, err := timeIntervalClient.FetchProjectWorkTypes(projectValues); err == nil {
 				// TODO: Optimise this? nested loops here
-				for _, remoteTask := range *remoteTasks {
-					// Also build the project IDs list
-					projects += remoteTask.ProjectId + ","
-					for _, localTask := range parser.Tasks {
-						if localTask != nil && localTask.Task == remoteTask.LocalId {
-							localTask.ProjectId = remoteTask.ProjectId
-							localTask.Id = remoteTask.Id
-							localTask.Title = remoteTask.Title
-							// Truncate long title
-							if len(localTask.Title) > 50 {
-								localTask.Title = localTask.Title[:50]
+				for _, localTask := range tasks {
+					var defaultWorkType *string
+					// Walk all work types of the same project
+					for _, remoteWorkType := range *remoteWorkTypes {
+						if localTask != nil && localTask.ProjectId == remoteWorkType.ProjectId {
+							localTask.WorkTypeId = remoteWorkType.WorkTypeId
+							defaultWorkType = &remoteWorkType.WorkType
+							// Finally found the match by work type name
+							if localTask.WorkType == remoteWorkType.WorkType {
+								defaultWorkType = nil
+								break
 							}
 						}
 					}
-				}
-				projects = strings.TrimSuffix(projects, ",")
-
-				// Fetch work types, because they are setup per project
-				if remoteWorkTypes, err := client.FetchProjectWorkTypes(projects); err == nil {
-					// TODO: Optimise this? nested loops here
-					for _, localTask := range parser.Tasks {
-						var defaultWorkType *string
-						// Walk all work types of the same project
-						for _, remoteWorkType := range *remoteWorkTypes {
-							if localTask != nil && localTask.ProjectId == remoteWorkType.ProjectId {
-								localTask.WorkTypeId = remoteWorkType.WorkTypeId
-								defaultWorkType = &remoteWorkType.WorkType
-								// Finally found the match by work type name
-								if localTask.WorkType == remoteWorkType.WorkType {
-									defaultWorkType = nil
-									break
-								}
-							}
-						}
-						// Input work type not found, using the last one we found from remote server
-						if defaultWorkType != nil {
-							localTask.WorkType = *defaultWorkType
-						}
+					// Input work type not found, using the last one we found from remote server
+					if defaultWorkType != nil {
+						localTask.WorkType = *defaultWorkType
 					}
-				} else {
-					setJobError(job, err)
 				}
-
-				// All done
-				setJobSuccess(job, "Found below task(s)")
-				taskParser = parser
-
 			} else {
-				setJobError(job, err)
+				job.SetError(err)
 			}
+
+			// All done
+			job.SetSuccess("Found below task(s)")
 		} else {
-			setJobError(job, err)
+			job.SetError(err)
 		}
 	}
 
 	// Render all jobs, until all done
-	time.Sleep(time.Millisecond * 100)
-	for pw.IsRenderInProgress() {
-	}
+	progress.RenderUntilAllDone()
 
 	if job.IsErrored() {
 		return nil, nil, errors.New("one or more steps throwing errors")
 	}
 
-	taskParser.DebugPrint()
-	result.tasks = taskParser.Tasks
+	// Print the tasks table
+	common.PrintTimeTasks(tasks)
 
-	return result, client, nil
+	result.tasks = tasks
+
+	return result, timeIntervalClient, nil
 }
 
 func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, client *intervals_api.Client, weekOffset int) error {
 	// instantiate a Progress Writer and set up the options
-	pw := progress.NewWriter()
-	setDefaultProgress(&pw)
-
-	go pw.Render()
+	progress := common.NewProgressTracker(ctx.Debug)
+	progress.Start()
 
 	weekDays := common.GetWeekRange(time.Now(), weekOffset)
 
@@ -153,6 +177,9 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 		console.Header("Press ENTER to process, or CTRL+C to terminate.")
 		fmt.Scanln()
 	}
+
+	// Calculate max text length for columns padding
+	maxTitleLength, maxWorkTypeLength := common.CalcMaxFieldsLen(prepResult.tasks)
 
 	for i, d := range weekDays {
 		for _, input := range prepResult.tasks {
@@ -179,28 +206,20 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 			// Reset this to avoid creation error, where remote server is not expecting this
 			createTime.WorkTypeRemote = ""
 
-			// Run each as a goroutine
-			go func() {
-				job := newJobTrack(pw, fmt.Sprintf(
-					"Creating time task: %s | %s | %s | %.2f hour(s) |",
-					createTime.Date,
-					createTime.Description,
-					createTime.WorkType,
-					createTimeHours,
-				))
-				if err := client.CreateTime(createTime); err == nil {
-					setJobSuccess(job, "Created")
-				} else {
-					setJobError(job, err)
-				}
-			}()
+			job := progress.AddNewTrack(fmt.Sprintf(
+				"Creating %s",
+				createTime.PaddedTitle(maxTitleLength, maxWorkTypeLength),
+			))
+			if err := client.CreateTime(createTime); err == nil {
+				job.SetSuccess("Created")
+			} else {
+				job.SetError(err)
+			}
 		}
 	}
 
 	// Render all jobs, until all done
-	time.Sleep(time.Millisecond * 100)
-	for pw.IsRenderInProgress() {
-	}
+	progress.RenderUntilAllDone()
 
 	if !ctx.Force {
 		console.Header("All DONE! Press ENTER to exit.")
@@ -212,7 +231,15 @@ func createTimeExecSteps(ctx CLIContext, prepResult *createTimePrepResult, clien
 
 func (c *timeCreateCmd) Run(ctx CLIContext) error {
 	// Prep checks
-	prepResult, client, err := createTimePrepSteps(ctx, c.InputFile)
+	prepResult, client, err := createTimePrepSteps(
+		ctx,
+		c.InputFile,
+		c.WeekOffset,
+		c.CalendarSubjectTemplate,
+		c.InputType,
+		c.UseDeviceCode,
+		c.CalendarDefaultType,
+	)
 	if err != nil {
 		return err
 	}

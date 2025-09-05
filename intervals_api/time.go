@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hxhieu/b1-timetask-cli-go/common"
@@ -33,6 +34,11 @@ type GetTimeResponse struct {
 }
 
 func (c *Client) CreateTime(createTime *TimeEntry) error {
+	if c.debug {
+		time.Sleep(common.RandomDelay(time.Millisecond*100, time.Millisecond*1000))
+		return nil
+	}
+
 	if createTime == nil {
 		return errors.New("cannot create nil time task")
 	}
@@ -78,6 +84,10 @@ func (c *Client) GetTimeEntries(start time.Time, end time.Time) (*[]TimeEntry, e
 }
 
 func (c *Client) DeleteTimeEntry(id string) error {
+	if c.debug {
+		time.Sleep(common.RandomDelay(time.Millisecond*100, time.Millisecond*1000))
+		return nil
+	}
 
 	err := c.delete("time/" + id)
 	if err != nil {
@@ -101,6 +111,9 @@ func (t *TimeEntry) LoadFromInput(input *common.TimeTaskInput) error {
 		return err
 	}
 	err = json.Unmarshal(src, t)
+	if err != nil {
+		return err
+	}
 
 	// Description, default to task title
 	if len(t.Description) == 0 {
@@ -110,4 +123,44 @@ func (t *TimeEntry) LoadFromInput(input *common.TimeTaskInput) error {
 	t.WorkType = input.WorkType
 
 	return nil
+}
+
+func (i *TimeEntry) PaddedTitle(maxTitleLen int, maxWorkTypeLen int) string {
+	// Duration from remote won't be padded, so we need to parse it
+	duration, _ := strconv.ParseFloat(i.Time, 32)
+
+	// Work type name from remote, or local input
+	workTypeName := i.WorkType
+	if len(workTypeName) == 0 {
+		workTypeName = i.WorkTypeRemote
+	}
+
+	return fmt.Sprintf(
+		"| %s | %-*s | %-*s | %5.2f |",
+		i.Date,
+		maxTitleLen,
+		i.Description,
+		maxWorkTypeLen,
+		workTypeName,
+		duration,
+	)
+}
+
+func CalcMaxFieldsLen(tasks *[]TimeEntry) (int, int) {
+	maxTitleLength := 0
+	maxWorkTypeLength := 0
+	for _, input := range *tasks {
+		if len(input.Description) > maxTitleLength {
+			maxTitleLength = len(input.Description)
+		}
+
+		if len(input.WorkType) > maxWorkTypeLength {
+			maxWorkTypeLength = len(input.WorkType)
+		}
+
+		if len(input.WorkTypeRemote) > maxWorkTypeLength {
+			maxWorkTypeLength = len(input.WorkTypeRemote)
+		}
+	}
+	return maxTitleLength, maxWorkTypeLength
 }
