@@ -37,8 +37,8 @@ func (p *CalendarTaskParser) ParseEvents(events *[]OutLookCalendarEvent) ([]*Tim
 			continue
 		}
 
-		// Group by code + worktype
-		groupingKey := code + "_" + strings.ToLower(workType)
+		// Group by code + worktype + desc
+		groupingKey := code + "_" + strings.ToLower(workType) + "_" + strings.ToLower(desc)
 		if taskMap[groupingKey] == nil {
 			taskMap[groupingKey] = &TimeTaskInput{
 				Task:     code,
@@ -147,8 +147,13 @@ func (e *OutLookCalendarEvent) fromCategory(defaultWorkType *string) (workType s
 			}
 		}
 
-		// First assigned category will be the work type
-		workType = workTypes[0]
+		// Sometime we dont want to enter a work type, default to -None-
+		if len(workTypes) == 0 {
+			workType = "-None-"
+		} else {
+			// First assigned category will be the work type
+			workType = workTypes[0]
+		}
 	}
 
 	return workType, billable, nil
