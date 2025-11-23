@@ -10,9 +10,6 @@ import (
 )
 
 func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEntry, *intervals_api.Client, error) {
-	var client *intervals_api.Client
-	var result *[]intervals_api.TimeEntry
-
 	weekDays := common.GetWeekRange(time.Now(), weekOffset)
 
 	// instantiate a Progress Writer and set up the options
@@ -22,21 +19,25 @@ func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEn
 	// Fetch time entries job
 	job := progress.AddNewTrack("Fetch week time tasks")
 
-	if token, err := common.GetUserToken(); err == nil {
-
-		// API client
-		client = intervals_api.New(token, ctx.Debug)
-
-		// Fetch tasks
-		if tasks, err := client.GetTimeEntries(weekDays[0], weekDays[len(weekDays)-1]); err == nil {
-			result = tasks
-			job.SetSuccess(fmt.Sprintf("Found %d task(s)", len(*tasks)))
-		} else {
-			job.SetError(err)
-		}
-	} else {
+	token, err := common.GetUserToken()
+	if err != nil {
 		job.SetError(err)
+		progress.RenderUntilAllDone()
+		return nil, nil, fmt.Errorf("failed to get user token: %w", err)
 	}
+
+	// API client
+	client := intervals_api.New(token, ctx.Debug)
+
+	// Fetch tasks
+	tasks, err := client.GetTimeEntries(weekDays[0], weekDays[len(weekDays)-1])
+	if err != nil {
+		job.SetError(err)
+		progress.RenderUntilAllDone()
+		return nil, nil, fmt.Errorf("failed to fetch time entries: %w", err)
+	}
+
+	job.SetSuccess(fmt.Sprintf("Found %d task(s)", len(*tasks)))
 
 	// Render all jobs, until all done
 	progress.RenderUntilAllDone()
@@ -48,7 +49,7 @@ func clearTimePrepSteps(ctx CLIContext, weekOffset int) (*[]intervals_api.TimeEn
 		fmt.Scanln()
 	}
 
-	return result, client, nil
+	return tasks, client, nil
 }
 
 func clearTimeExecSteps(ctx CLIContext, tasks *[]intervals_api.TimeEntry, client *intervals_api.Client) error {
