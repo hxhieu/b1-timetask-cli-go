@@ -1,0 +1,65 @@
+name: Build binary
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+    name: Build Windows Binary
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.0"
+
+      - name: Build Windows Binary
+        run: GOOS=windows GOARCH=amd64 go build -o build/bin/b1-timetask-cli-go-windows.exe
+
+      - name: Upload as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: b1-timetask-cli-go-windows
+          path: build/bin/b1-timetask-cli-go-windows.exe
+          retention-days: 90
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: build/bin/b1-timetask-cli-go-windows.exe
+
+  build-macos:
+    runs-on: macos-latest
+    name: Build macOS Binary
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.0"
+
+      - name: Build macOS Binary
+        run: GOOS=darwin GOARCH=${{ matrix.arch }} go build -o build/bin/b1-timetask-cli-go-darwin-${{ matrix.arch }}
+
+      - name: Upload as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: b1-timetask-cli-go-macos-${{ matrix.arch }}
+          path: build/bin/b1-timetask-cli-go-darwin-${{ matrix.arch }}
+          retention-days: 90
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: build/bin/b1-timetask-cli-go-darwin-${{ matrix.arch }}
