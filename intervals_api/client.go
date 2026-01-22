@@ -24,7 +24,7 @@ func (c *Client) handlerErrorBody(err error, body *[]byte) error {
 	if body != nil {
 		bodyMsg = string(*body)
 	}
-	return fmt.Errorf("%s %s", err.Error(), bodyMsg)
+	return fmt.Errorf("%w %s", err, bodyMsg)
 }
 
 func (c *Client) setAuth(req *http.Request) {
